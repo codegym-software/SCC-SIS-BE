@@ -9,10 +9,14 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users",
-        uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+                @UniqueConstraint(name = "uk_users_keycloak_id", columnNames = "keycloak_user_id")
+        },
         indexes = {
                 @Index(name = "idx_users_full_name", columnList = "full_name"),
-                @Index(name = "idx_users_phone", columnList = "phone")
+                @Index(name = "idx_users_phone", columnList = "phone"),
+                @Index(name = "idx_users_keycloak_id", columnList = "keycloak_user_id")
         })
 public class User {
 
@@ -34,6 +38,11 @@ public class User {
     @NotBlank
     @Column(name = "phone", nullable = false, length = 32)
     private String phone;
+
+    // Liên kết với Keycloak
+    @NotBlank
+    @Column(name = "keycloak_user_id", nullable = false, length = 64)
+    private String keycloakUserId;
 
     // Thông tin bổ sung
     @Column(name = "dob")
@@ -75,11 +84,7 @@ public class User {
     @Column(name = "note")
     private String note;
 
-    // Auth
-    @NotBlank
-    @Column(name = "password_hash", nullable = false, length = 255)
-    private String passwordHash;
-
+    // Trạng thái
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -101,46 +106,67 @@ public class User {
     // Getters & Setters
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
+
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public String getKeycloakUserId() { return keycloakUserId; }
+    public void setKeycloakUserId(String keycloakUserId) { this.keycloakUserId = keycloakUserId; }
+
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }
+
     public GenderType getGender() { return gender; }
     public void setGender(GenderType gender) { this.gender = gender; }
+
     public String getNationalIdNo() { return nationalIdNo; }
     public void setNationalIdNo(String nationalIdNo) { this.nationalIdNo = nationalIdNo; }
+
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
     public String getSpecialty() { return specialty; }
     public void setSpecialty(String specialty) { this.specialty = specialty; }
+
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
+
     public String getAddressLine() { return addressLine; }
     public void setAddressLine(String addressLine) { this.addressLine = addressLine; }
+
     public String getProvince() { return province; }
     public void setProvince(String province) { this.province = province; }
+
     public String getDistrict() { return district; }
     public void setDistrict(String district) { this.district = district; }
+
     public String getWard() { return ward; }
     public void setWard(String ward) { this.ward = ward; }
+
     public String getEducationLevel() { return educationLevel; }
     public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }
