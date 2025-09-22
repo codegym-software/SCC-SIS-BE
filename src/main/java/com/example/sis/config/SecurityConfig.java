@@ -13,15 +13,21 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
+        return http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(registry -> registry
-                        .requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .anyRequest().permitAll()  // cho phép tất cả, để test nhanh
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/actuator/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .anyRequest().permitAll() // Cho phép tất cả để dev nhanh
                 )
                 .httpBasic(Customizer.withDefaults())
-                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {})); // để sẵn future (không bắt buộc)
-        return http.build();
+                // Tạm bỏ JWT/Keycloak để tránh thiếu JwtDecoder
+                // .oauth2ResourceServer(oauth -> oauth.jwt())
+                .build();
     }
 
     @Bean

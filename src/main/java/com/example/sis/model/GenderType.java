@@ -1,2 +1,6 @@
-package com.example.sis.model;public class GenderType {
+package com.example.sis.model;
+
+public enum GenderType {
+    male,  // Nam
+    female // Nữ
 }

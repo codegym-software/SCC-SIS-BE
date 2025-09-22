@@ -3,77 +3,144 @@ package com.example.sis.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
-})
+@Table(name = "users",
+        uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+        indexes = {
+                @Index(name = "idx_users_full_name", columnList = "full_name"),
+                @Index(name = "idx_users_phone", columnList = "phone")
+        })
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Long userId;
+    private Integer userId;
 
+    // (*) bắt buộc nhập
     @NotBlank
-    @Size(max = 255)
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
 
     @NotBlank
     @Email
-    @Size(max = 255)
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     @NotBlank
-    @Size(max = 255)
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "phone", nullable = false, length = 32)
+    private String phone;
+
+    // Thông tin bổ sung
+    @Column(name = "dob")
+    private LocalDate dob;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", length = 16)
+    private GenderType gender;
+
+    @Column(name = "national_id_no", length = 64)
+    private String nationalIdNo;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "specialty", length = 255)
+    private String specialty;
+
+    @Lob
+    @Column(name = "experience")
+    private String experience;
+
+    @Column(name = "address_line", length = 255)
+    private String addressLine;
+
+    @Column(name = "province", length = 128)
+    private String province;
+
+    @Column(name = "district", length = 128)
+    private String district;
+
+    @Column(name = "ward", length = 128)
+    private String ward;
+
+    @Column(name = "education_level", length = 128)
+    private String educationLevel;
+
+    @Lob
+    @Column(name = "note")
+    private String note;
+
+    // Auth
+    @NotBlank
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
     @Column(name = "is_active", nullable = false)
-    private Boolean isActive = Boolean.TRUE;
+    private boolean active = true;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    // Audit/soft delete
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public User() {}
 
-    // Getters/Setters
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-
+    // Getters & Setters
+    public Integer getUserId() { return userId; }
+    public void setUserId(Integer userId) { this.userId = userId; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
-
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public LocalDate getDob() { return dob; }
+    public void setDob(LocalDate dob) { this.dob = dob; }
+    public GenderType getGender() { return gender; }
+    public void setGender(GenderType gender) { this.gender = gender; }
+    public String getNationalIdNo() { return nationalIdNo; }
+    public void setNationalIdNo(String nationalIdNo) { this.nationalIdNo = nationalIdNo; }
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+    public String getSpecialty() { return specialty; }
+    public void setSpecialty(String specialty) { this.specialty = specialty; }
+    public String getExperience() { return experience; }
+    public void setExperience(String experience) { this.experience = experience; }
+    public String getAddressLine() { return addressLine; }
+    public void setAddressLine(String addressLine) { this.addressLine = addressLine; }
+    public String getProvince() { return province; }
+    public void setProvince(String province) { this.province = province; }
+    public String getDistrict() { return district; }
+    public void setDistrict(String district) { this.district = district; }
+    public String getWard() { return ward; }
+    public void setWard(String ward) { this.ward = ward; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-
-    public Boolean getIsActive() { return isActive; }
-    public void setIsActive(Boolean active) { isActive = active; }
-
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }
