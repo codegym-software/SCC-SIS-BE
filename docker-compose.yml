@@ -7,7 +7,7 @@ services:
       MYSQL_DATABASE: sis
       TZ: UTC
     ports:
-      - "${DB_PORT}:3306"              # máy bạn kết nối qua 3307
+      - "${DB_PORT}:3306"              # db_port khai báo ở file .env
     command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
       - mysql_data:/var/lib/mysql
@@ -25,5 +25,5 @@ services:
 
 volumes:
   mysql_data:
-    name: ${VOLUME_NAME}
+    name: ${VOLUME_NAME}        # volume_name khai báo ở file .env
     external: true
