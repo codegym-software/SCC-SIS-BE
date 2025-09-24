@@ -29,9 +29,6 @@ public class Center {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active = true;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -47,8 +44,6 @@ public class Center {
     public void setCode(String code) { this.code = code; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

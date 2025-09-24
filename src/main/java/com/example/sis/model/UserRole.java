@@ -1,19 +1,18 @@
 package com.example.sis.model;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_roles",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_user_roles_user_role_center",
-                        columnNames = {"user_id", "role_id", "center_id"})
-        },
+@Table(
+        name = "user_roles",
         indexes = {
                 @Index(name = "idx_user_roles_user_id", columnList = "user_id"),
-                @Index(name = "idx_user_roles_center_id", columnList = "center_id")
-        })
+                @Index(name = "idx_user_roles_center_id", columnList = "center_id"),
+                @Index(name = "idx_user_roles_user_revoked", columnList = "user_id, revoked_at"),
+                @Index(name = "idx_user_roles_center_revoked", columnList = "center_id, revoked_at")
+        }
+)
 public class UserRole {
 
     @Id
@@ -31,13 +30,10 @@ public class UserRole {
             foreignKey = @ForeignKey(name = "fk_user_roles_role"))
     private Role role;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "center_id", nullable = false,
+    @ManyToOne(optional = true, fetch = FetchType.LAZY) // <-- cho phép NULL
+    @JoinColumn(name = "center_id", nullable = true,
             foreignKey = @ForeignKey(name = "fk_user_roles_center"))
-    private Center center;
-
-    @Column(name = "is_active", nullable = false)
-    private boolean active = true; // Thu hồi = false
+    private Center center; // null = role global
 
     @Column(name = "assigned_at")
     private LocalDateTime assignedAt;
@@ -50,7 +46,6 @@ public class UserRole {
 
     public UserRole() {}
 
-    // Getters & Setters
     public Integer getUserRoleId() { return userRoleId; }
     public void setUserRoleId(Integer userRoleId) { this.userRoleId = userRoleId; }
     public User getUser() { return user; }
@@ -59,8 +54,6 @@ public class UserRole {
     public void setRole(Role role) { this.role = role; }
     public Center getCenter() { return center; }
     public void setCenter(Center center) { this.center = center; }
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getAssignedAt() { return assignedAt; }
     public void setAssignedAt(LocalDateTime assignedAt) { this.assignedAt = assignedAt; }
     public LocalDateTime getRevokedAt() { return revokedAt; }
