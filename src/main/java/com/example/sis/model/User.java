@@ -61,8 +61,7 @@ public class User {
     @Column(name = "specialty", length = 255)
     private String specialty;
 
-    @Lob
-    @Column(name = "experience")
+    @Column(name = "experience", columnDefinition = "TEXT")
     private String experience;
 
     @Column(name = "address_line", length = 255)
@@ -80,8 +79,7 @@ public class User {
     @Column(name = "education_level", length = 128)
     private String educationLevel;
 
-    @Lob
-    @Column(name = "note")
+    @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
     // Trạng thái
