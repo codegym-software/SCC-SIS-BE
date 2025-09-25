@@ -1,0 +1,1 @@
+ALTER TABLE centers ADD active BIT NOT NULL DEFAULT 1;
