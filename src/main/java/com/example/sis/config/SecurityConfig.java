@@ -1,72 +1,75 @@
 package com.example.sis.config;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.*;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173}")
-    private String[] allowedOrigins;
-
-    @Value("${app.logout-success-url:http://localhost:5173/}")
-    private String postLogoutRedirectUri;
-
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http,
-                                    ClientRegistrationRepository clientRegistrationRepository) throws Exception {
-
-        // Logout handler gọi end-session Keycloak
-        OidcClientInitiatedLogoutSuccessHandler handler =
-                new OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository);
-        handler.setPostLogoutRedirectUri(postLogoutRedirectUri);
-
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/actuator/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/public/**"
-                        ).permitAll()
+                        // Cho phép preflight của mọi đường dẫn
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Tùy rule của bạn; ví dụ:
+                        .requestMatchers("/api/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users").authenticated() // BE đã kiểm tra quyền SA theo DB ở service
                         .anyRequest().authenticated()
                 )
-                // Login qua Keycloak
-                .oauth2Login(oauth -> oauth
-                        .defaultSuccessUrl("/me", true) // Sau login chuyển sang /me
-                )
-                // Logout SSO
-                .logout(logout -> logout.logoutSuccessHandler(handler))
-                .oauth2Client(Customizer.withDefaults());
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
         return http.build();
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(Arrays.asList(allowedOrigins));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        cfg.setAllowedHeaders(Collections.singletonList("*"));
-        cfg.setAllowCredentials(true);
-        cfg.setMaxAge(3600L);
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOriginsProp) {
+
+        List<String> allowedOrigins = Arrays.stream(allowedOriginsProp.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toList());
+
+        CorsConfiguration config = new CorsConfiguration();
+        // KHÔNG dùng "*" khi allowCredentials=true
+        config.setAllowedOrigins(allowedOrigins);
+
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Cho phép gửi Authorization + Content-Type…
+        config.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
+        ));
+        // Nếu cần đọc Location/Link… từ FE
+        config.setExposedHeaders(Arrays.asList("Location"));
+        // Bearer token không cần cookie, nhưng set true cũng OK trong dev
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
+        // Áp cho toàn bộ API
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }
