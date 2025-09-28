@@ -6,7 +6,9 @@ import com.example.sis.dto.center.CenterResponse;
 import com.example.sis.exception.BadRequestException;
 import com.example.sis.exception.NotFoundException;
 import com.example.sis.model.Center;
+import com.example.sis.model.UserRole;
 import com.example.sis.repository.CenterRepository;
+import com.example.sis.repository.UserRoleRepository;
 import com.example.sis.service.CenterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,9 @@ public class CenterServiceImpl implements CenterService {
 
     @Autowired
     private CenterRepository centerRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -83,8 +88,8 @@ public class CenterServiceImpl implements CenterService {
         center.setUpdatedBy(updatedBy);
         centerRepository.save(center);
 
-        // TODO: Thu hồi tất cả user_roles liên quan đến center này
-        // revokeAllUserRolesForCenter(centerId);
+        // Thu hồi tất cả user_roles liên quan đến center này
+        revokeAllUserRolesForCenter(centerId);
     }
 
     @Override
@@ -164,5 +169,22 @@ public class CenterServiceImpl implements CenterService {
         response.setUpdatedAt(center.getUpdatedAt());
         response.setDeletedAt(center.getDeletedAt());
         return response;
+    }
+
+    /**
+     * Thu hồi tất cả user-roles đang active của một center
+     */
+    private void revokeAllUserRolesForCenter(Integer centerId) {
+        List<UserRole> activeUserRoles = userRoleRepository.findActiveByCenterId(centerId);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        for (UserRole userRole : activeUserRoles) {
+            userRole.setRevokedAt(now);
+        }
+
+        if (!activeUserRoles.isEmpty()) {
+            userRoleRepository.saveAll(activeUserRoles);
+            System.out.println("✅ Đã thu hồi " + activeUserRoles.size() + " user-roles cho center ID: " + centerId);
+        }
     }
 }
