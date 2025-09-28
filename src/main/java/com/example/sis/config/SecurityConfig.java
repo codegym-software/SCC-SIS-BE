@@ -21,55 +21,65 @@ import java.util.stream.Collectors;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http,
-                                           CorsConfigurationSource corsConfigurationSource) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Cho phép preflight của mọi đường dẫn
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http,
+                        CorsConfigurationSource corsConfigurationSource) throws Exception {
+                http
+                                .csrf(csrf -> csrf.disable())
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                // Cho phép preflight của mọi đường dẫn
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Tùy rule của bạn; ví dụ:
-                        .requestMatchers("/api/auth/profile").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/users").authenticated() // BE đã kiểm tra quyền SA theo DB ở service
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
+                                                // Tùy rule của bạn; ví dụ:
+                                                .requestMatchers("/api/auth/profile").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/users").authenticated() // BE đã
+                                                                                                                // kiểm
+                                                                                                                // tra
+                                                                                                                // quyền
+                                                                                                                // SA
+                                                                                                                // theo
+                                                                                                                // DB ở
+                                                                                                                // service
+                                                .requestMatchers(HttpMethod.GET, "/api/centers").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/centers/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/centers").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/centers/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/centers/**").authenticated()
+                                                .anyRequest().authenticated())
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOriginsProp) {
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource(
+                        @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOriginsProp) {
 
-        List<String> allowedOrigins = Arrays.stream(allowedOriginsProp.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.toList());
+                List<String> allowedOrigins = Arrays.stream(allowedOriginsProp.split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isBlank())
+                                .collect(Collectors.toList());
 
-        CorsConfiguration config = new CorsConfiguration();
-        // KHÔNG dùng "*" khi allowCredentials=true
-        config.setAllowedOrigins(allowedOrigins);
+                CorsConfiguration config = new CorsConfiguration();
+                // KHÔNG dùng "*" khi allowCredentials=true
+                config.setAllowedOrigins(allowedOrigins);
 
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        // Cho phép gửi Authorization + Content-Type…
-        config.setAllowedHeaders(Arrays.asList(
-                "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
-        ));
-        // Nếu cần đọc Location/Link… từ FE
-        config.setExposedHeaders(Arrays.asList("Location"));
-        // Bearer token không cần cookie, nhưng set true cũng OK trong dev
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
+                config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                // Cho phép gửi Authorization + Content-Type…
+                config.setAllowedHeaders(Arrays.asList(
+                                "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
+                // Nếu cần đọc Location/Link… từ FE
+                config.setExposedHeaders(Arrays.asList("Location"));
+                // Bearer token không cần cookie, nhưng set true cũng OK trong dev
+                config.setAllowCredentials(true);
+                config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Áp cho toàn bộ API
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                // Áp cho toàn bộ API
+                source.registerCorsConfiguration("/**", config);
+                return source;
+        }
 }
