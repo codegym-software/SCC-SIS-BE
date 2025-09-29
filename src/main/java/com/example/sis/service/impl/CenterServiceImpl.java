@@ -104,6 +104,9 @@ public class CenterServiceImpl implements CenterService {
         center.setDeletedAt(null);
         center.setUpdatedBy(updatedBy);
         centerRepository.save(center);
+
+        // Restore tất cả user_roles đã bị thu hồi khi center bị vô hiệu hóa
+        restoreUserRolesForCenter(centerId);
     }
 
     private void validateCreateRequest(CreateCenterRequest request) {
@@ -186,5 +189,25 @@ public class CenterServiceImpl implements CenterService {
             userRoleRepository.saveAll(activeUserRoles);
             System.out.println("✅ Đã thu hồi " + activeUserRoles.size() + " user-roles cho center ID: " + centerId);
         }
+    }
+
+    /**
+     * Restore tất cả user_roles đã bị thu hồi cho center
+     */
+    private void restoreUserRolesForCenter(Integer centerId) {
+        List<UserRole> revokedUserRoles = userRoleRepository.findRevokedByCenterId(centerId);
+
+        if (revokedUserRoles.isEmpty()) {
+            System.out.println("⚠️ Không có user-roles nào cần restore cho center ID: " + centerId);
+            return;
+        }
+
+        // Set revokedAt = null để restore user-roles
+        for (UserRole userRole : revokedUserRoles) {
+            userRole.setRevokedAt(null);
+        }
+
+        userRoleRepository.saveAll(revokedUserRoles);
+        System.out.println("✅ Đã restore " + revokedUserRoles.size() + " user-roles cho center ID: " + centerId);
     }
 }
