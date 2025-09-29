@@ -56,4 +56,12 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
             AND ur.revokedAt IS NULL
       """)
   List<UserRole> findActiveByCenterId(@Param("centerId") Integer centerId);
+
+  // NEW: Tìm tất cả user-roles đã bị thu hồi của một center để restore
+  @Query("""
+          SELECT ur FROM UserRole ur
+          WHERE ur.center.centerId = :centerId
+            AND ur.revokedAt IS NOT NULL
+      """)
+  List<UserRole> findRevokedByCenterId(@Param("centerId") Integer centerId);
 }
