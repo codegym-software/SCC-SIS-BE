@@ -1,4 +1,4 @@
-package com.example.sis.dtos.center;
+package com.example.sis.dto.center;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -42,10 +42,10 @@ public class CenterResponse {
     }
 
     public CenterResponse(Integer centerId, String code, String name, String email, String phone,
-                          LocalDate establishedDate, String description, String addressLine,
-                          String province, String district, String ward, LocalDateTime createdAt,
-                          LocalDateTime updatedAt, Integer createdBy, Integer updatedBy,
-                          LocalDateTime deletedAt) {
+            LocalDate establishedDate, String description, String addressLine,
+            String province, String district, String ward, LocalDateTime createdAt,
+            LocalDateTime updatedAt, Integer createdBy, Integer updatedBy,
+            LocalDateTime deletedAt) {
         this.centerId = centerId;
         this.code = code;
         this.name = name;
