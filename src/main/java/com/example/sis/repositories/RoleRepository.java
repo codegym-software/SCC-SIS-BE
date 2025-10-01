@@ -9,5 +9,11 @@ import java.util.List;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Integer> {
     List<Role> findAllByOrderByNameAsc();
+
     List<Role> findByActiveTrueOrderByNameAsc();
+
+    /**
+     * Kiểm tra role code đã tồn tại chưa
+     */
+    boolean existsByCode(String code);
 }

@@ -64,4 +64,40 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
             AND ur.revokedAt IS NOT NULL
       """)
   List<UserRole> findRevokedByCenterId(@Param("centerId") Integer centerId);
+
+  // NEW: Kiểm tra user có role cụ thể tại center không (theo user ID)
+  @Query("""
+      SELECT COUNT(ur) > 0
+      FROM UserRole ur
+      WHERE ur.user.userId = :userId
+        AND ur.role.roleId = :roleId
+        AND (:centerId IS NULL AND ur.center IS NULL OR ur.center.centerId = :centerId)
+        AND ur.revokedAt IS NULL
+      """)
+  boolean userHasActiveRoleByUserIdAndRoleIdAndCenterId(@Param("userId") Integer userId,
+      @Param("roleId") Integer roleId,
+      @Param("centerId") Integer centerId);
+
+  // NEW: Kiểm tra user có role cụ thể tại center không (theo user ID và role
+  // code)
+  @Query("""
+      SELECT COUNT(ur) > 0
+      FROM UserRole ur
+      JOIN ur.role r
+      WHERE ur.user.userId = :userId
+        AND r.code = :roleCode
+        AND (:centerId IS NULL AND ur.center IS NULL OR ur.center.centerId = :centerId)
+        AND ur.revokedAt IS NULL
+      """)
+  boolean userHasActiveRoleByUserIdAndRoleCodeAndCenterId(@Param("userId") Integer userId,
+      @Param("roleCode") String roleCode,
+      @Param("centerId") Integer centerId);
+
+  // NEW: Tìm tất cả user-roles đang active của một user
+  @Query("""
+      SELECT ur FROM UserRole ur
+      WHERE ur.user.userId = :userId AND ur.revokedAt IS NULL
+      ORDER BY ur.assignedAt DESC
+      """)
+  List<UserRole> findActiveByUserId(@Param("userId") Integer userId);
 }
