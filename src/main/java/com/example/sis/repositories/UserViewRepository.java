@@ -30,31 +30,43 @@ public interface UserViewRepository extends JpaRepository<User, Integer> {
      *  - r.active = true để bỏ role bị vô hiệu hóa.
      */
     @Query("""
-    SELECT new com.example.sis.dtos.user.UserAssignmentRow(
-        u.userId,
-        u.fullName,
-        u.email,
-        u.phone,
-        u.active,
-        u.specialty,
-        r.roleId,
-        r.code,
-        r.name,
-        c.centerId,
-        c.name
-    )
-    FROM User u
-    JOIN UserRole ur ON ur.user = u AND ur.revokedAt IS NULL
-    JOIN Role r ON r = ur.role AND r.active = true
-    JOIN Center c ON c = ur.center
-    WHERE u.deletedAt IS NULL
-      AND (:centerId IS NULL OR c.centerId = :centerId)
-      AND (:roleCode IS NULL OR r.code = :roleCode)
-      AND (:searchPattern IS NULL OR LOWER(u.fullName) LIKE LOWER(:searchPattern) OR LOWER(u.email) LIKE LOWER(:searchPattern))
-    ORDER BY u.userId DESC
+  SELECT new com.example.sis.dtos.user.UserAssignmentRow(
+      u.userId,
+      u.fullName,
+      u.email,
+      u.phone,
+      u.active,
+      u.specialty,
+      r.roleId,
+      r.code,
+      r.name,
+      c.centerId,
+      c.name
+  )
+  FROM User u
+  LEFT JOIN UserRole ur ON ur.user = u AND ur.revokedAt IS NULL
+  LEFT JOIN Role r      ON r = ur.role AND r.active = true
+  LEFT JOIN Center c    ON c = ur.center
+  WHERE u.deletedAt IS NULL
+    AND (
+          :centerId IS NULL
+          OR c.centerId = :centerId
+          OR (c IS NULL AND r.code IN (:globalRoles))
+        )
+    AND (:roleCode IS NULL OR r.code = :roleCode)
+    AND (
+          :searchPattern IS NULL
+          OR LOWER(u.fullName) LIKE :searchPattern
+          OR LOWER(u.email)    LIKE :searchPattern
+        )
+  ORDER BY u.userId DESC
 """)
     List<UserAssignmentRow> searchUserViews(@Param("centerId") Integer centerId,
                                             @Param("roleCode") String roleCode,
-                                            @Param("searchPattern") String searchPattern);
+                                            @Param("searchPattern") String searchPattern,
+                                            @Param("globalRoles") List<String> globalRoles);
+
+
+
 
 }
