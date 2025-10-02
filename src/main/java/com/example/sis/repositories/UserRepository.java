@@ -16,14 +16,15 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     // Java 17 text block OK; nếu IDE kêu, dùng bản ALT ở dưới.
     @Query("""
-        SELECT DISTINCT u
-        FROM User u
-        LEFT JOIN UserRole ur ON ur.user = u
-        WHERE u.deletedAt IS NULL
-          AND ( :centerId IS NULL OR ur.center.centerId = :centerId )
-          AND ( ur IS NULL OR ur.revokedAt IS NULL )
-    """)
+    SELECT DISTINCT u
+    FROM User u
+    JOIN UserRole ur ON ur.user = u
+    WHERE u.deletedAt IS NULL
+      AND ( :centerId IS NULL OR ur.center.centerId = :centerId )
+      AND ur.revokedAt IS NULL
+""")
     List<User> findUsersByCenterId(@Param("centerId") Integer centerId);
+
 
     // ALT (nếu text block """ bị lỗi, dùng chuỗi thường):
     // @Query("SELECT DISTINCT u FROM User u LEFT JOIN UserRole ur ON ur.user = u " +

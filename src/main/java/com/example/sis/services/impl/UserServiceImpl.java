@@ -4,7 +4,7 @@ package com.example.sis.services.impl;
 import com.example.sis.dtos.user.CreateUserRequest;
 import com.example.sis.dtos.user.UserResponse;
 import com.example.sis.keycloak.KeycloakAdminClient;
-import com.example.sis.models.GenderType;
+import com.example.sis.enums.GenderType;
 import com.example.sis.models.Role;
 import com.example.sis.models.User;
 import com.example.sis.models.UserRole;
