@@ -1,18 +1,54 @@
 spring.application.name=sis
 server.port=7000
 
-# ================= Database =================
-spring.datasource.url=jdbc:mysql://localhost:${DB_PORT}/sis?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+# ================== Database ==================
+spring.datasource.url=jdbc:mysql://localhost:3307/sis?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
 spring.datasource.username=root
-spring.datasource.password=${MYSQL_ROOT_PASSWORD}
+spring.datasource.password=123456
 
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
-# ================= Flyway =================
 spring.flyway.enabled=true
 spring.flyway.baseline-on-migrate=true
 
-# ================= CORS =================
+# ================== CORS ==================
 app.cors.allowed-origins=http://localhost:5173
+
+# ================== Keycloak OAuth2 Client (optional) ==================
+#
+spring.security.oauth2.client.registration.keycloak.client-id=sis-be
+spring.security.oauth2.client.registration.keycloak.client-secret=7dd084b0-3b39-4651-b762-8d5124f9968f
+spring.security.oauth2.client.registration.keycloak.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.keycloak.client-authentication-method=client_secret_basic
+spring.security.oauth2.client.registration.keycloak.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.keycloak.scope=openid,profile,email
+
+# issuer-uri(không tao JwtDecoder)
+spring.security.oauth2.client.provider.keycloak.issuer-uri=https://id.dev.codegym.vn/auth/realms/codegym-software-nhom-5
+spring.security.oauth2.client.provider.keycloak.user-name-attribute=preferred_username
+
+# ================== Resource Server (JWT) ==================
+spring.security.oauth2.resourceserver.jwt.issuer-uri=https://id.dev.codegym.vn/auth/realms/codegym-software-nhom-5
+
+#
+# spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://id.dev.codegym.vn/auth/realms/codegym-software-nhom-5/protocol/openid-connect/certs
+
+# ================== Keycloak Admin (Service Account) ==================
+# Dùng auto-create user trên Keycloak khi POST /api/users
+keycloak.admin.server-url=https://id.dev.codegym.vn/auth
+keycloak.admin.realm=codegym-software-nhom-5
+keycloak.admin.client-id=sis-admin
+keycloak.admin.client-secret=ffbd5df7-a801-42d5-b628-fe87d7d6ecb4
+# password temporary (DEV ONLY!!)
+keycloak.admin.default-temp-password=Team5@12345
+
+
+# ================== Logging (debug only) ==================
+logging.level.org.springframework.security=TRACE
+logging.level.org.springframework.security.oauth2=TRACE
+logging.level.org.springframework.web.client.RestTemplate=DEBUG
+
+# ================== Session cookie name ==================
+server.servlet.session.cookie.name=SISSESSION

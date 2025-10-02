@@ -1,4 +1,4 @@
-package com.example.sis.models;
+package com.example.sis.enums;
 
 public enum GenderType {
     male,  // Nam

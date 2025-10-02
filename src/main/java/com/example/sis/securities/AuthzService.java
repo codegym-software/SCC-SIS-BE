@@ -1,4 +1,3 @@
-// src/main/java/com/example/sis/security/AuthzService.java
 package com.example.sis.securities;
 
 import com.example.sis.repositories.UserRoleRepository;
@@ -17,27 +16,41 @@ public class AuthzService {
         this.userRoleRepo = userRoleRepo;
     }
 
-    public boolean hasRole(Authentication authentication, String roleCode) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) return false;
+    private String getSub(Authentication authentication) {
+        if (authentication == null) return null;
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Jwt jwt)) return null;
         String sub = jwt.getClaimAsString("sub");
-        if (sub == null || sub.isBlank()) return false;
+        if (sub == null || sub.isBlank()) return null;
+        return sub;
+    }
+
+    /** Check người dùng có 1 role code (role code là dữ liệu trong DB: roles.code) */
+    public boolean hasRole(Authentication authentication, String roleCode) {
+        String sub = getSub(authentication);
+        if (sub == null) return false;
         return userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, roleCode);
     }
 
-    // NEW: rule list users
-    public boolean canListUsers(Authentication authentication, Integer centerId) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) return false;
-        String sub = jwt.getClaimAsString("sub");
-        if (sub == null || sub.isBlank()) return false;
+    /** Super Admin? */
+    public boolean isSuperAdmin(Authentication authentication) {
+        return hasRole(authentication, "SUPER_ADMIN");
+    }
 
-        // SA luôn được
-        if (userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, "SUPER_ADMIN")) return true;
+    /** Có quyền theo center? (SA luôn pass; nếu có centerId thì cho phép CENTER_MANAGER/ACADEMIC_STAFF của center đó) */
+    public boolean hasCenterAccess(Authentication authentication, Integer centerId) {
+        String sub = getSub(authentication);
+        if (sub == null) return false;
 
-        // Không centerId -> chỉ SA được xem toàn hệ thống
+        if (hasRole(authentication, "SUPER_ADMIN")) return true;
         if (centerId == null) return false;
 
-        // CENTER_MANAGER hoặc ACADEMIC_STAFF của center đó thì cho phép
         List<String> allowed = List.of("CENTER_MANAGER", "ACADEMIC_STAFF");
         return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
+    }
+
+    /** Rule dùng riêng cho API list users (giữ lại vì bạn đã gọi ở controller) */
+    public boolean canListUsers(Authentication authentication, Integer centerId) {
+        return hasCenterAccess(authentication, centerId);
     }
 }

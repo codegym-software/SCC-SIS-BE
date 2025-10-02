@@ -1,6 +1,6 @@
 package com.example.sis.services.impl;
 
-import com.example.sis.constants.RoleScope;
+import com.example.sis.enums.RoleScope;
 import com.example.sis.dtos.user.AssignmentItemResponse;
 import com.example.sis.dtos.user.UserAssignmentRow;
 import com.example.sis.dtos.user.UserViewResponse;

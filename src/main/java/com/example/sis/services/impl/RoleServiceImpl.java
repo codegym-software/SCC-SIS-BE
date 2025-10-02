@@ -1,6 +1,6 @@
 package com.example.sis.services.impl;
 
-import com.example.sis.constants.RoleScope;              // enum ở constants
+import com.example.sis.enums.RoleScope;              // enum ở constants
 import com.example.sis.dtos.role.RoleResponse;          // DTO ở dtos.role
 import com.example.sis.models.Role;                     // entity ở models
 import com.example.sis.repositories.RoleRepository;     // repo ở repositories
