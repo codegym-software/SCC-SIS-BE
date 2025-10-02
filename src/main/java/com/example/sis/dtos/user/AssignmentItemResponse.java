@@ -1,6 +1,6 @@
 package com.example.sis.dtos.user;
 
-import com.example.sis.constants.RoleScope;
+import com.example.sis.enums.RoleScope;
 
 public class AssignmentItemResponse {
 

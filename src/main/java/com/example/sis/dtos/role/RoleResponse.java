@@ -1,6 +1,6 @@
 package com.example.sis.dtos.role;
 
-import com.example.sis.constants.RoleScope; // <— dùng enum ở constants
+import com.example.sis.enums.RoleScope; // <— dùng enum ở constants
 
 public class RoleResponse {
     private Integer roleId;
