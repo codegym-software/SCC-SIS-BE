@@ -32,8 +32,14 @@ public class UserViewServiceImpl implements UserViewService {
     @Override
     @Transactional(readOnly = true)
     public List<UserViewResponse> search(Integer centerId, String roleCode, String q) {
-        // Truy vấn phẳng từ repo
-        List<UserAssignmentRow> rows = userViewRepository.searchUserViews(centerId, roleCode, q);
+        // chuẩn bị searchPattern (WHERE gọn, tránh concat trong JPQL)
+        String searchPattern = (q == null || q.isBlank()) ? null : "%" + q.trim().toLowerCase() + "%";
+        // các role GLOBAL (center=null) vẫn phải hiển thị khi lọc theo center
+        List<String> globalRoles = List.of("SUPER_ADMIN", "TRAINING_MANAGER");
+
+        // Truy vấn phẳng từ repo (đã đổi chữ ký để nhận searchPattern + globalRoles)
+        List<UserAssignmentRow> rows =
+                userViewRepository.searchUserViews(centerId, roleCode, searchPattern, globalRoles);
 
         // Gộp theo userId
         Map<Integer, UserViewResponse> byUser = new LinkedHashMap<>();
@@ -61,8 +67,8 @@ public class UserViewServiceImpl implements UserViewService {
                         r.getRoleCode(),
                         r.getRoleName(),
                         scope,
-                        r.getCenterId(),    // null nếu GLOBAL
-                        r.getCenterName()   // null nếu GLOBAL
+                        r.getCenterId(),   // null nếu GLOBAL
+                        r.getCenterName()  // null nếu GLOBAL
                 );
                 u.getAssignments().add(item);
             }
@@ -74,8 +80,13 @@ public class UserViewServiceImpl implements UserViewService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Long> countByRole(Integer centerId) {
-        // Lấy toàn bộ rows trong phạm vi center (nếu có), rồi đếm distinct user theo roleCode.
-        List<UserAssignmentRow> rows = userViewRepository.searchUserViews(centerId, null, null);
+        // đếm theo CENTER, vẫn giữ GLOBAL khi lọc centerId
+        String searchPattern = null;
+        String roleCode = null;
+        List<String> globalRoles = List.of("SUPER_ADMIN", "TRAINING_MANAGER");
+
+        List<UserAssignmentRow> rows =
+                userViewRepository.searchUserViews(centerId, roleCode, searchPattern, globalRoles);
 
         // roleCode -> set userId (distinct theo user)
         Map<String, Set<Integer>> roleToUsers = new HashMap<>();
