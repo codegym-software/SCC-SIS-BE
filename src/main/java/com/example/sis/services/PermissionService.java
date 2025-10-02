@@ -4,41 +4,31 @@ import com.example.sis.dtos.permission.PermissionResponse;
 import java.util.List;
 
 /**
- * PermissionService:
- * - Quản lý danh sách quyền trong hệ thống
- * - Chỉ Super Admin mới có quyền xem danh sách quyền
+ * Permissions management (Super Admin only).
+ * Unified search for listing; categories & get-by-id supported.
  */
 public interface PermissionService {
 
     /**
-     * Lấy danh sách tất cả permissions
-     * 
-     * @param active - null hoặc true: chỉ lấy permissions đang active
-     *               - false: lấy tất cả permissions
-     * @return danh sách permissions
+     * Unified listing with filters & pagination.
+     * - active: null/true -> only active (default), false -> all
+     * - q: fuzzy on code/name
+     * - category: exact match
+     * - page/size/sort: pagination (e.g. "name,asc")
      */
-    List<PermissionResponse> listPermissions(Boolean active);
+    List<PermissionResponse> search(String q, String category, Boolean active,
+                                    Integer page, Integer size, String sort);
 
-    /**
-     * Lấy danh sách permissions theo category
-     * 
-     * @param category - category cần lọc
-     * @return danh sách permissions theo category
-     */
-    List<PermissionResponse> listPermissionsByCategory(String category);
-
-    /**
-     * Lấy danh sách tất cả categories
-     * 
-     * @return danh sách categories
-     */
+    /** Distinct categories (active only). */
     List<String> listCategories();
 
-    /**
-     * Lấy thông tin chi tiết permission theo ID
-     * 
-     * @param id - ID của permission
-     * @return thông tin chi tiết permission
-     */
-    PermissionResponse getPermissionById(Integer id);
+    /** Get a permission by ID. */
+    PermissionResponse getById(Integer id);
+
+    // ---- Legacy (kept for backward compatibility) ----
+    @Deprecated
+    List<PermissionResponse> listPermissions(Boolean active);
+
+    @Deprecated
+    List<PermissionResponse> listPermissionsByCategory(String category);
 }

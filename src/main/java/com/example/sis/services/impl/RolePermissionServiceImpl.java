@@ -2,7 +2,7 @@ package com.example.sis.services.impl;
 
 import com.example.sis.dtos.permission.PermissionResponse;
 import com.example.sis.dtos.role.RoleResponse;
-import com.example.sis.constants.RoleScope;
+import com.example.sis.enums.RoleScope;
 import com.example.sis.dtos.rolepermission.RolePermissionRequest;
 import com.example.sis.dtos.rolepermission.RolePermissionResponse;
 import com.example.sis.models.Permission;
