@@ -35,10 +35,8 @@ public class CenterServiceImpl implements CenterService {
     @Override
     @Transactional(readOnly = true)
     public List<CenterLiteResponse> listCentersLite() {
-        return centerRepository.findAllActiveOrderByCreatedAtDesc()
-                .stream()
-                .map(c -> new CenterLiteResponse(c.getCenterId(), c.getCode(), c.getName()))
-                .collect(Collectors.toList());
+        // Lấy từ DTO projection từ repository (chỉ select centerId, code, name)
+        return centerRepository.findLiteActive();
     }
 
     // ===== Quản trị (dev1) =====
