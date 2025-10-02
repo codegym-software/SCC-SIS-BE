@@ -1,6 +1,8 @@
 package com.example.sis.repositories;
 
 import com.example.sis.models.Permission;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,39 +14,32 @@ import java.util.Optional;
 @Repository
 public interface PermissionRepository extends JpaRepository<Permission, Integer> {
 
-    /**
-     * Tìm tất cả permissions đang active, sắp xếp theo category và name
-     */
+    // (giữ method cũ nếu nơi khác còn dùng)
     List<Permission> findByActiveTrueOrderByCategoryAscNameAsc();
-
-    /**
-     * Tìm tất cả permissions, sắp xếp theo category và name
-     */
     List<Permission> findAllByOrderByCategoryAscNameAsc();
-
-    /**
-     * Tìm permission theo code
-     */
     Optional<Permission> findByCodeAndActiveTrue(String code);
-
-    /**
-     * Tìm permissions theo category
-     */
     List<Permission> findByCategoryAndActiveTrueOrderByNameAsc(String category);
 
-    /**
-     * Tìm tất cả categories của permissions đang active
-     */
     @Query("SELECT DISTINCT p.category FROM Permission p WHERE p.active = true ORDER BY p.category")
     List<String> findDistinctCategoriesByActiveTrue();
 
-    /**
-     * Kiểm tra permission code đã tồn tại chưa
-     */
     boolean existsByCode(String code);
-
-    /**
-     * Kiểm tra permission code đã tồn tại chưa (trừ permission hiện tại)
-     */
     boolean existsByCodeAndPermissionIdNot(String code, Integer permissionId);
+
+    // NEW: Search + filter + pagination (fast path for big data)
+    @Query("""
+        SELECT p FROM Permission p
+        WHERE
+          ( :active IS NULL AND p.active = true OR :active IS NOT NULL AND p.active = :active )
+          AND ( :category IS NULL OR p.category = :category )
+          AND (
+            :q IS NULL OR :q = '' OR
+            LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%')) OR
+            LOWER(p.code) LIKE LOWER(CONCAT('%', :q, '%'))
+          )
+        """)
+    Page<Permission> search(@Param("q") String q,
+                            @Param("category") String category,
+                            @Param("active") Boolean active,
+                            Pageable pageable);
 }
