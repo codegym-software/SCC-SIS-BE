@@ -1,4 +1,4 @@
-package com.example.sis.constants;
+package com.example.sis.enums;
 
 public enum RoleScope {
     GLOBAL,

@@ -1,5 +1,6 @@
 package com.example.sis.models;
 
+import com.example.sis.enums.GenderType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

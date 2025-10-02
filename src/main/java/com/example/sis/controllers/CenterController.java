@@ -1,6 +1,6 @@
 package com.example.sis.controllers;
 
-import com.example.sis.constants.RoleCodes;
+
 import com.example.sis.dtos.center.CenterLiteResponse;
 import com.example.sis.dtos.center.CenterResponse;
 import com.example.sis.dtos.center.CreateCenterRequest;
@@ -35,26 +35,27 @@ public class CenterController {
     // ===== Quản trị (dev1 giữ nguyên) =====
     // Active-full
     @GetMapping
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<List<CenterResponse>> getAllActiveCenters() {
         return ResponseEntity.ok(centerService.getAllActiveCenters());
     }
 
     // Toàn bộ (kể cả deactivated)
     @GetMapping("/all")
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<List<CenterResponse>> getAllCenters() {
         return ResponseEntity.ok(centerService.getAllCenters());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
+
     public ResponseEntity<CenterResponse> getCenterById(@PathVariable Integer id) {
         return ResponseEntity.ok(centerService.getCenterById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<CenterResponse> createCenter(
             @Valid @RequestBody CreateCenterRequest request,
             Authentication authentication) {
@@ -64,7 +65,7 @@ public class CenterController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<CenterResponse> updateCenter(
             @PathVariable Integer id,
             @Valid @RequestBody UpdateCenterRequest request,
@@ -75,7 +76,7 @@ public class CenterController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<Void> deactivateCenter(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -85,7 +86,7 @@ public class CenterController {
     }
 
     @PutMapping("/{id}/reactivate")
-    @PreAuthorize("hasRole('" + RoleCodes.SUPER_ADMIN + "')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<CenterResponse> reactivateCenter(
             @PathVariable Integer id,
             Authentication authentication) {
