@@ -3,98 +3,103 @@ package com.example.sis.controllers;
 import com.example.sis.dtos.userrole.UserRoleRequest;
 import com.example.sis.dtos.userrole.UserRoleResponse;
 import com.example.sis.services.UserRoleService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.parameters.P;   // <-- IMPORTANT
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * REST Controller quản lý user roles
- * 
- * Endpoints:
- * - POST /api/user-roles/assign - Gán role cho user tại center
- * - DELETE /api/user-roles/{userRoleId}/revoke - Thu hồi role của user
- * - GET /api/user-roles/center/{centerId} - Xem user roles tại center
- * - GET /api/user-roles/user/{userId} - Xem roles của user
- * 
- * Security:
- * - Tất cả endpoints yêu cầu SUPER_ADMIN role
- * - Authentication thông qua JWT
+ * User ↔ Role assignments (GLOBAL or per-center).
+ * Base path: /api/user-roles
  */
 @RestController
 @RequestMapping("/api/user-roles")
 public class UserRoleController {
 
-    @Autowired
-    private UserRoleService userRoleService;
+    private final UserRoleService userRoleService;
 
-    /**
-     * Gán role cho user tại center cụ thể
-     * 
-     * @param request thông tin gán role (userId, roleId, centerId)
-     * @param jwt     JWT token để lấy thông tin người thực hiện
-     * @return thông tin UserRole vừa được gán
-     */
-    @PostMapping("/assign")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public UserRoleController(UserRoleService userRoleService) {
+        this.userRoleService = userRoleService;
+    }
+
+    /** Assign ONE role. */
+    @PostMapping
+    @PreAuthorize("@authz.canAssignUserRole(authentication, #req.roleId, #req.centerId)")
     public ResponseEntity<UserRoleResponse> assignRoleToUser(
-            @RequestBody UserRoleRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        String assignedBy = jwt.getSubject(); // Keycloak user ID
-        UserRoleResponse response = userRoleService.assignRoleToUser(request, assignedBy);
-        return ResponseEntity.ok(response);
+            @P("req") @Valid @RequestBody UserRoleRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        String assignedBy = jwt.getSubject();
+        UserRoleResponse res = userRoleService.assignRoleToUser(request, assignedBy);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     /**
-     * Thu hồi role của user
-     * 
-     * @param userRoleId ID của user role cần thu hồi
-     * @param jwt        JWT token để lấy thông tin người thực hiện
-     * @return 200 OK nếu thành công
+     * Assign MANY roles for a single user.
+     * Path userId is applied to all items.
      */
-    @DeleteMapping("/{userRoleId}/revoke")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/user/{userId}")
+    @PreAuthorize("@authz.canAssignUserRoles(authentication, #items)")
+    public ResponseEntity<List<UserRoleResponse>> assignRolesToUser(
+            @PathVariable Integer userId,
+            @P("items") @RequestBody List<UserRoleRequest> requests,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        if (requests != null) {
+            for (UserRoleRequest r : requests) {
+                if (r != null) r.setUserId(userId);
+            }
+        }
+        List<UserRoleResponse> res = userRoleService.assignRolesToUser(userId, requests, jwt.getSubject());
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+    }
+
+    /** Revoke ONE (soft). */
+    @DeleteMapping("/{userRoleId}")
+    @PreAuthorize("@authz.canModifyUserRole(authentication, #userRoleId)")
     public ResponseEntity<Void> revokeRoleFromUser(
             @PathVariable Integer userRoleId,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        String revokedBy = jwt.getSubject(); // Keycloak user ID
-        userRoleService.revokeRoleFromUser(userRoleId, revokedBy);
-        return ResponseEntity.ok().build();
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        userRoleService.revokeRoleFromUser(userRoleId, jwt.getSubject());
+        return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Xem tất cả user roles tại center cụ thể
-     * 
-     * @param centerId ID của center
-     * @return danh sách UserRole tại center
-     */
+    /** Revoke MANY (bulk, SA only). */
+    @DeleteMapping
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
+    public ResponseEntity<Void> revokeRolesFromUsers(
+            @RequestBody List<Integer> userRoleIds,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        userRoleService.revokeRolesFromUsers(userRoleIds, jwt.getSubject());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** List active assignments in a center (paged). */
     @GetMapping("/center/{centerId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasCenterAccess(authentication, #centerId)")
     public ResponseEntity<List<UserRoleResponse>> getUserRolesByCenterId(
-            @PathVariable Integer centerId) {
-
-        List<UserRoleResponse> userRoles = userRoleService.getUserRolesByCenterId(centerId);
-        return ResponseEntity.ok(userRoles);
+            @PathVariable Integer centerId,
+            @RequestParam(defaultValue = "0") @Min(0) Integer page,
+            @RequestParam(defaultValue = "20") @Min(1) Integer size
+    ) {
+        return ResponseEntity.ok(userRoleService.getUserRolesByCenterId(centerId, page, size));
     }
 
-    /**
-     * Xem tất cả roles của user cụ thể
-     * 
-     * @param userId ID của user
-     * @return danh sách roles của user
-     */
+    /** List active roles of a user (all, SA only). */
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("@authz.isSuperAdmin(authentication)")
     public ResponseEntity<List<UserRoleResponse>> getUserRolesByUserId(
-            @PathVariable Integer userId) {
-
-        List<UserRoleResponse> userRoles = userRoleService.getUserRolesByUserId(userId);
-        return ResponseEntity.ok(userRoles);
+            @PathVariable Integer userId
+    ) {
+        return ResponseEntity.ok(userRoleService.getUserRolesByUserId(userId));
     }
 }

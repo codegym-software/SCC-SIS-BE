@@ -7,53 +7,29 @@ import com.example.sis.dtos.rolepermission.RolePermissionResponse;
 import java.util.List;
 
 /**
- * RolePermissionService:
- * - Quản lý việc gán/thu hồi quyền cho role
- * - Chỉ Super Admin mới có quyền thực hiện
+ * Manage Role ↔ Permission assignments (Super Admin only).
+ * Filtered & paged listing, idempotent assign, and revoke.
  */
 public interface RolePermissionService {
 
-    /**
-     * Lấy danh sách permissions của một role
-     * 
-     * @param roleId ID của role
-     * @return danh sách permissions
-     */
-    List<PermissionResponse> getPermissionsByRoleId(Integer roleId);
+    /** List assigned permissions of a role (filtered & paged; active only). */
+    List<PermissionResponse> listAssigned(Integer roleId, String q, String category,
+                                          Integer page, Integer size, String sort);
 
-    /**
-     * Gán permission cho role
-     * 
-     * @param request   thông tin gán permission
-     * @param grantedBy người thực hiện gán (Keycloak ID)
-     * @return thông tin permission đã gán
-     */
+    /** List unassigned permissions (filtered & paged; active only). */
+    List<PermissionResponse> listUnassigned(Integer roleId, String q, String category,
+                                            Integer page, Integer size, String sort);
+
+    /** Assign ONE permission to role (idempotent). */
     RolePermissionResponse assignPermissionToRole(RolePermissionRequest request, String grantedBy);
 
-    /**
-     * Thu hồi permission từ role
-     * 
-     * @param roleId       ID của role
-     * @param permissionId ID của permission
-     */
+    /** Assign MANY permissions to role (idempotent per item). */
+    List<RolePermissionResponse> assignMultiplePermissionsToRole(Integer roleId, List<Integer> permissionIds,
+                                                                 String grantedBy);
+
+    /** Revoke ONE permission from role. */
     void revokePermissionFromRole(Integer roleId, Integer permissionId);
 
-    /**
-     * Gán nhiều permissions cho role
-     * 
-     * @param roleId        ID của role
-     * @param permissionIds danh sách ID permissions
-     * @param grantedBy     người thực hiện gán (Keycloak ID)
-     * @return danh sách permissions đã gán
-     */
-    List<RolePermissionResponse> assignMultiplePermissionsToRole(Integer roleId, List<Integer> permissionIds,
-            String grantedBy);
-
-    /**
-     * Lấy danh sách permissions chưa được gán cho role
-     * 
-     * @param roleId ID của role
-     * @return danh sách permissions chưa gán
-     */
-    List<PermissionResponse> getUnassignedPermissionsByRoleId(Integer roleId);
+    /** Revoke MANY permissions from role (bulk, efficient). */
+    void revokeMultiplePermissionsFromRole(Integer roleId, List<Integer> permissionIds);
 }
