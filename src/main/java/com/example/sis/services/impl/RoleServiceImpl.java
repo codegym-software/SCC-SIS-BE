@@ -1,18 +1,23 @@
 package com.example.sis.services.impl;
 
-import com.example.sis.enums.RoleScope;              // enum ở constants
-import com.example.sis.dtos.role.RoleResponse;          // DTO ở dtos.role
-import com.example.sis.models.Role;                     // entity ở models
-import com.example.sis.repositories.RoleRepository;     // repo ở repositories
-import com.example.sis.services.RoleService;            // interface ở services
-import com.example.sis.utils.RoleScopeUtil;             // util bạn đã có
-
+import com.example.sis.enums.RoleScope;                 // <— đường dẫn đúng
+import com.example.sis.dtos.role.CreateRoleRequest;
+import com.example.sis.dtos.role.RoleResponse;
+import com.example.sis.dtos.role.UpdateRoleRequest;
+import com.example.sis.models.Role;
+import com.example.sis.repositories.RoleRepository;
+import com.example.sis.services.RoleService;
+import com.example.sis.utils.RoleScopeUtil;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
@@ -22,36 +27,84 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoleResponse> listRoles(Boolean active) {
-        final List<Role> roles = (active == null || Boolean.TRUE.equals(active))
-                ? roleRepository.findByActiveTrueOrderByNameAsc()
-                : roleRepository.findAllByOrderByNameAsc();
+        // Repo giờ trả Page => dùng Pageable.unpaged() để giữ nguyên chữ ký List<>
+        Page<Role> page = (active == null || Boolean.TRUE.equals(active))
+                ? roleRepository.findByActiveTrueOrderByNameAsc(Pageable.unpaged())
+                : roleRepository.findAllByOrderByNameAsc(Pageable.unpaged());
 
-        return roles.stream()
-                .map(r -> new RoleResponse(
-                        r.getRoleId(),
-                        r.getCode(),
-                        r.getName(),
-                        resolveScope(r.getCode()),
-                        r.isActive()
-                ))
-                .collect(Collectors.toList());
+        return page.getContent().stream()
+                .map(this::convertToResponse)
+                .toList();
     }
 
-    /**
-     * Xác định scope dựa theo util của bạn:
-     *  - isExclusiveGlobal(code)  -> GLOBAL
-     *  - isCenterScoped(code)     -> CENTER
-     *  - fallback                 -> CENTER
-     */
+    @Override
+    public RoleResponse createRole(CreateRoleRequest request) {
+        if (roleRepository.existsByCode(request.getCode())) {
+            throw new RuntimeException("Mã role đã tồn tại: " + request.getCode());
+        }
+
+        Role role = new Role();
+        role.setCode(request.getCode());
+        role.setName(request.getName());
+        role.setActive(request.getActive() != null ? request.getActive() : true);
+        role.setCreatedAt(LocalDateTime.now());
+        role.setUpdatedAt(LocalDateTime.now());
+
+        Role saved = roleRepository.save(role);
+        return convertToResponse(saved);
+    }
+
+    @Override
+    public RoleResponse updateRole(Integer roleId, UpdateRoleRequest request) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role không tồn tại với ID: " + roleId));
+
+        role.setName(request.getName());
+        if (request.getActive() != null) {
+            role.setActive(request.getActive());
+        }
+        role.setUpdatedAt(LocalDateTime.now());
+
+        Role saved = roleRepository.save(role);
+        return convertToResponse(saved);
+    }
+
+    @Override
+    public void deleteRole(Integer roleId) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role không tồn tại với ID: " + roleId));
+
+        // Soft delete
+        role.setActive(false);
+        role.setUpdatedAt(LocalDateTime.now());
+        roleRepository.save(role);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RoleResponse getRoleById(Integer roleId) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role không tồn tại với ID: " + roleId));
+        return convertToResponse(role);
+    }
+
+    // === Helpers ===
+    private RoleResponse convertToResponse(Role role) {
+        return new RoleResponse(
+                role.getRoleId(),
+                role.getCode(),
+                role.getName(),
+                resolveScope(role.getCode()),
+                role.isActive()
+        );
+    }
+
     private RoleScope resolveScope(String code) {
         if (code == null) return RoleScope.CENTER;
-        if (RoleScopeUtil.isExclusiveGlobal(code)) {
-            return RoleScope.GLOBAL;
-        }
-        if (RoleScopeUtil.isCenterScoped(code)) {
-            return RoleScope.CENTER;
-        }
+        if (RoleScopeUtil.isExclusiveGlobal(code)) return RoleScope.GLOBAL;
+        if (RoleScopeUtil.isCenterScoped(code))   return RoleScope.CENTER;
         return RoleScope.CENTER;
     }
 }
