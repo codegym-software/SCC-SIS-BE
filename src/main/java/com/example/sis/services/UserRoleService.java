@@ -6,53 +6,40 @@ import com.example.sis.dtos.userrole.UserRoleResponse;
 import java.util.List;
 
 /**
- * UserRoleService:
- * - Quản lý việc gán/thu hồi role cho user tại center
- * - Super Admin có quyền thực hiện ở tất cả center
- * - Center Manager chỉ có quyền thực hiện ở center mình quản lý
+ * Manage User ↔ Role assignments (global or per-center).
+ *
+ * Rules:
+ * - GLOBAL role → centerId must be null, only Super Admin can assign/revoke.
+ * - CENTER role → centerId required; Super Admin or Center Manager of that center.
  */
 public interface UserRoleService {
 
     /**
-     * Gán role cho user tại center cụ thể
-     * 
-     * @param request    thông tin gán role
-     * @param assignedBy người thực hiện gán (Keycloak ID)
-     * @return thông tin user-role đã gán
+     * Assign ONE role to a user (idempotent per (roleId, centerId)).
+     * - Validates scope: GLOBAL(centerId=null) vs CENTER(centerId required).
+     * - GLOBAL-exclusive rule is enforced in implementation.
      */
     UserRoleResponse assignRoleToUser(UserRoleRequest request, String assignedBy);
 
     /**
-     * Thu hồi role từ user tại center
-     * 
-     * @param userRoleId ID của user-role
-     * @param revokedBy  người thực hiện thu hồi (Keycloak ID)
+     * Assign MANY roles to a user (idempotent per item).
+     * - All items must target the same user.
+     * - Validates scope per item; GLOBAL-exclusive rule enforced.
      */
+    List<UserRoleResponse> assignRolesToUser(Integer userId, List<UserRoleRequest> requests, String assignedBy);
+
+    /** Soft revoke ONE user-role by id (no-op if already revoked). */
     void revokeRoleFromUser(Integer userRoleId, String revokedBy);
 
-    /**
-     * Lấy danh sách user-roles của một center
-     * 
-     * @param centerId ID của center
-     * @return danh sách user-roles
-     */
-    List<UserRoleResponse> getUserRolesByCenterId(Integer centerId);
+    /** Soft revoke MANY user-roles by ids (bulk & efficient). */
+    void revokeRolesFromUsers(List<Integer> userRoleIds, String revokedBy);
 
-    /**
-     * Lấy danh sách user-roles của một user
-     * 
-     * @param userId ID của user
-     * @return danh sách user-roles
-     */
+    /** List active user-roles in a center (paged, ordered by assignedAt DESC). */
+    List<UserRoleResponse> getUserRolesByCenterId(Integer centerId, Integer page, Integer size);
+
+    /** List active roles of a user (ordered by assignedAt DESC). */
     List<UserRoleResponse> getUserRolesByUserId(Integer userId);
 
-    /**
-     * Kiểm tra user có role cụ thể tại center không
-     * 
-     * @param userId   ID của user
-     * @param roleCode mã role
-     * @param centerId ID của center (có thể null cho role global)
-     * @return true nếu user có role tại center
-     */
+    /** Check if user has a role at a center (centerId may be null for GLOBAL). */
     boolean hasRoleAtCenter(Integer userId, String roleCode, Integer centerId);
 }
