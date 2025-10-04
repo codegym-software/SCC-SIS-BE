@@ -23,18 +23,22 @@ public class AuthzService {
     }
 
     private String getSub(Authentication authentication) {
-        if (authentication == null) return null;
+        if (authentication == null)
+            return null;
         Object principal = authentication.getPrincipal();
-        if (!(principal instanceof Jwt jwt)) return null;
+        if (!(principal instanceof Jwt jwt))
+            return null;
         String sub = jwt.getClaimAsString("sub");
-        if (sub == null || sub.isBlank()) return null;
+        if (sub == null || sub.isBlank())
+            return null;
         return sub;
     }
 
     /** Has a specific role code? (roles.code in DB) */
     public boolean hasRole(Authentication authentication, String roleCode) {
         String sub = getSub(authentication);
-        if (sub == null) return false;
+        if (sub == null)
+            return false;
         return userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, roleCode);
     }
 
@@ -50,9 +54,12 @@ public class AuthzService {
      */
     public boolean hasCenterAccess(Authentication authentication, Integer centerId) {
         String sub = getSub(authentication);
-        if (sub == null) return false;
-        if (isSuperAdmin(authentication)) return true;
-        if (centerId == null) return false;
+        if (sub == null)
+            return false;
+        if (isSuperAdmin(authentication))
+            return true;
+        if (centerId == null)
+            return false;
 
         List<String> allowed = List.of("CENTER_MANAGER");
         return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
@@ -70,7 +77,8 @@ public class AuthzService {
      */
     public boolean canAssignUserRole(Authentication authentication, Integer roleId, Integer centerId) {
         Role role = roleRepo.findById(roleId).orElse(null);
-        if (role == null) return false;
+        if (role == null)
+            return false;
 
         String code = role.getCode();
         if (RoleScopeUtil.isExclusiveGlobal(code)) {
@@ -84,11 +92,14 @@ public class AuthzService {
      * Bulk guard: every item must satisfy canAssignUserRole(...).
      */
     public boolean canAssignUserRoles(Authentication authentication, List<UserRoleRequest> requests) {
-        if (requests == null || requests.isEmpty()) return false;
+        if (requests == null || requests.isEmpty())
+            return false;
         for (UserRoleRequest r : requests) {
-            if (r == null || r.getRoleId() == null) return false;
+            if (r == null || r.getRoleId() == null)
+                return false;
             Integer centerId = r.getCenterId();
-            if (!canAssignUserRole(authentication, r.getRoleId(), centerId)) return false;
+            if (!canAssignUserRole(authentication, r.getRoleId(), centerId))
+                return false;
         }
         return true;
     }
@@ -100,7 +111,33 @@ public class AuthzService {
      */
     public boolean canModifyUserRole(Authentication authentication, Integer userRoleId) {
         Integer centerId = userRoleRepo.findCenterIdByUserRoleId(userRoleId);
-        if (centerId == null) return isSuperAdmin(authentication);
+        if (centerId == null)
+            return isSuperAdmin(authentication);
         return hasCenterAccess(authentication, centerId);
+    }
+
+    /**
+     * Academic Staff access:
+     * - SA always pass
+     * - else: must be ACADEMIC_STAFF at that center
+     */
+    public boolean hasAcademicAccess(Authentication authentication, Integer centerId) {
+        String sub = getSub(authentication);
+        if (sub == null)
+            return false;
+        if (isSuperAdmin(authentication))
+            return true;
+        if (centerId == null)
+            return false;
+
+        List<String> allowed = List.of("ACADEMIC_STAFF", "CENTER_MANAGER");
+        return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
+    }
+
+    /**
+     * Can manage classes: SA or Academic Staff/Center Manager at specific center
+     */
+    public boolean canManageClasses(Authentication authentication, Integer centerId) {
+        return hasAcademicAccess(authentication, centerId);
     }
 }
