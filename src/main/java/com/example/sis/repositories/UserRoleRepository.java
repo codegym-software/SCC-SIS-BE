@@ -80,9 +80,15 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
           AND ur.revokedAt IS NULL
           AND ur.center IS NOT NULL
         ORDER BY ur.assignedAt DESC
-        LIMIT 1
       """)
   Integer findCenterIdByKeycloakUserId(@Param("keycloakUserId") String keycloakUserId);
+
+  // NEW: get user ID by keycloak user ID (simple approach)
+  @Query("""
+        SELECT u.userId FROM User u
+        WHERE u.keycloakUserId = :keycloakUserId
+      """)
+  Integer findUserIdByKeycloakUserId(@Param("keycloakUserId") String keycloakUserId);
 
   // NEW: paginated list of active user-roles by center (for large datasets)
   @Query("""
