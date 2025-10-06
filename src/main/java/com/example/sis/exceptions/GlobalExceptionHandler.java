@@ -20,14 +20,37 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException ex, WebRequest req) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiError> handleValidation(ValidationException ex, WebRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler({ MethodArgumentNotValidException.class, BindException.class })
     public ResponseEntity<ApiError> handleValidation(Exception ex, WebRequest req) {
         return build(HttpStatus.BAD_REQUEST, "Validation failed: " + ex.getMessage(), req);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, WebRequest req) {
-        return build(HttpStatus.CONFLICT, "Vi phạm ràng buộc dữ liệu (ví dụ email đã tồn tại).", req);
+        String message = "Database constraint violation";
+
+        // Kiểm tra các constraint phổ biến
+        String rootCause = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+
+        if (rootCause.contains("uk_ct_class_teacher_start")) {
+            message = "Lecturer has already been assigned to this class on the same date";
+        } else if (rootCause.contains("Duplicate entry")) {
+            message = "Duplicate data detected. This record already exists.";
+        } else if (rootCause.contains("foreign key constraint")) {
+            message = "Referenced data does not exist or cannot be deleted due to dependencies";
+        }
+
+        return build(HttpStatus.CONFLICT, message, req);
     }
 
     @ExceptionHandler(Exception.class)
