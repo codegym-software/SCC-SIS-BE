@@ -3,6 +3,7 @@ package com.example.sis.controllers;
 import com.example.sis.dtos.classes.ClassLiteResponse;
 import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.dtos.classes.CreateClassRequest;
+import com.example.sis.dtos.classes.UpdateClassRequest;
 import com.example.sis.dtos.program.ProgramLiteResponse;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.repositories.UserRoleRepository;
@@ -134,6 +135,34 @@ public class ClassController {
                     .toList();
             return ResponseEntity.ok(liteClasses);
         }
+    }
+
+    /**
+     * Cập nhật thông tin lớp học
+     * Chỉ Super Admin hoặc Academic Staff tại trung tâm đó mới được cập nhật
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<ClassResponse> updateClass(
+            @PathVariable Integer id,
+            @Valid @RequestBody UpdateClassRequest request,
+            Authentication authentication) {
+
+        // Kiểm tra lớp học có tồn tại không
+        ClassResponse existingClass = classService.getClassById(id);
+
+        // Kiểm tra quyền truy cập - Academic Staff chỉ được sửa lớp trong center của
+        // mình
+        if (!isCurrentUserSuperAdmin(authentication)) {
+            Integer userCenterId = getCurrentUserCenterId(authentication);
+            if (userCenterId == null || !userCenterId.equals(existingClass.getCenterId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        Integer updatedBy = getCurrentUserId(authentication);
+        ClassResponse updatedClass = classService.updateClass(id, request, updatedBy);
+        return ResponseEntity.ok(updatedClass);
     }
 
     /**
