@@ -35,7 +35,7 @@ public class ClassController {
 
     /**
      * Tạo lớp học mới
-     * Chỉ Super Admin hoặc Academic Staff/Center Manager tại trung tâm đó mới được
+     * Chỉ Super Admin hoặc Academic Staff tại trung tâm đó mới được
      * tạo
      */
     @PostMapping
@@ -148,10 +148,15 @@ public class ClassController {
      * Lấy User ID hiện tại từ JWT token
      */
     private Integer getCurrentUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof Jwt) {
-            // TODO: map từ keycloak sub -> userId nội bộ nếu cần
-            // Tạm thời return 1 cho test
-            return 1;
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String keycloakUserId = jwt.getSubject(); // Lấy sub claim từ JWT
+            System.out.println("Debug - Keycloak User ID from JWT: " + keycloakUserId);
+
+            // Tìm user ID trong database dựa trên keycloak_user_id
+            Integer userId = userRoleRepository.findUserIdByKeycloakUserId(keycloakUserId);
+            System.out.println("Debug - Found User ID in DB: " + userId);
+
+            return userId;
         }
         return null;
     }
