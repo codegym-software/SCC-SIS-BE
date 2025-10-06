@@ -3,6 +3,7 @@ package com.example.sis.services;
 import com.example.sis.dtos.classes.ClassLiteResponse;
 import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.dtos.classes.CreateClassRequest;
+import com.example.sis.dtos.classes.UpdateClassRequest;
 import com.example.sis.models.Center;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.models.Program;
@@ -80,6 +81,46 @@ public class ClassService {
         classEntity.setUpdatedBy(creator);
 
         ClassEntity savedClass = classRepository.save(classEntity);
+        return convertToClassResponse(savedClass);
+    }
+
+    /**
+     * Cập nhật thông tin lớp học
+     */
+    @Transactional
+    public ClassResponse updateClass(Integer classId, UpdateClassRequest request, Integer updatedBy) {
+        // Find existing class
+        ClassEntity existingClass = classRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+
+        // Check if new name is unique within the center (excluding current class)
+        if (!existingClass.getName().equals(request.getName()) &&
+                classRepository.existsByCenterIdAndNameExcludingId(
+                        existingClass.getCenter().getCenterId(), request.getName(), classId)) {
+            throw new RuntimeException("Tên lớp học đã tồn tại trong trung tâm này");
+        }
+
+        // Validate dates if provided
+        if (request.getStartDate() != null && request.getEndDate() != null) {
+            if (request.getStartDate().isAfter(request.getEndDate())) {
+                throw new RuntimeException("Ngày bắt đầu không thể sau ngày kết thúc");
+            }
+        }
+
+        // Get updater user
+        User updater = userRepository.findById(updatedBy).orElse(null);
+
+        // Update fields
+        existingClass.setName(request.getName());
+        existingClass.setDescription(request.getDescription());
+        existingClass.setStartDate(request.getStartDate());
+        existingClass.setEndDate(request.getEndDate());
+        existingClass.setRoom(request.getRoom());
+        existingClass.setCapacity(request.getCapacity());
+        existingClass.setUpdatedAt(LocalDateTime.now());
+        existingClass.setUpdatedBy(updater);
+
+        ClassEntity savedClass = classRepository.save(existingClass);
         return convertToClassResponse(savedClass);
     }
 
