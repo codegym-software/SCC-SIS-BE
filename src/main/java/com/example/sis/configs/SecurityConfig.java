@@ -76,6 +76,17 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PUT, "/api/centers/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/centers/**").authenticated()
 
+                                                // Programs
+                                                .requestMatchers(HttpMethod.GET, "/api/programs").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/programs/lite").authenticated()
+
+                                                // Classes
+                                                .requestMatchers(HttpMethod.GET, "/api/classes").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/classes").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/classes/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/**").authenticated()
+
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
