@@ -43,35 +43,36 @@ public class ClassTeacherService {
     /**
      * Gán lecturer vào lớp học
      */
-    public ClassLecturerResponse assignLecturer(Integer classId, AssignLecturerRequest request, Integer assignedBy) {
+    public ClassLecturerResponse assignLecturer(Integer classId, Integer lecturerId, AssignLecturerRequest request,
+            Integer assignedBy) {
         // Validate class exists
         ClassEntity classEntity = classRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
 
         // Validate lecturer exists and has LECTURER role
-        User lecturer = userRepository.findById(request.getLecturerId())
+        User lecturer = userRepository.findById(lecturerId)
                 .orElseThrow(
-                        () -> new ResourceNotFoundException("Lecturer not found with id: " + request.getLecturerId()));
+                        () -> new ResourceNotFoundException("Lecturer not found with id: " + lecturerId));
 
         // Kiểm tra lecturer có role LECTURER không
         String lecturerKeycloakId = lecturer.getKeycloakUserId();
         if (lecturerKeycloakId == null
                 || !userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(lecturerKeycloakId, "LECTURER")) {
-            throw new ValidationException("User with id " + request.getLecturerId() + " does not have LECTURER role");
+            throw new ValidationException("User with id " + lecturerId + " does not have LECTURER role");
         }
 
         // Kiểm tra lecturer đã được gán cho lớp này chưa
         Optional<ClassTeacher> existingAssignment = classTeacherRepository
-                .findActiveAssignment(classId, request.getLecturerId());
+                .findActiveAssignment(classId, lecturerId);
 
         if (existingAssignment.isPresent()) {
             throw new ValidationException("Lecturer is already assigned to this class");
         }
 
         // Kiểm tra có conflict về start_date không (tránh vi phạm unique constraint)
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = request.getStartDate() != null ? request.getStartDate() : LocalDate.now();
         long conflicts = classTeacherRepository.countConflictingAssignments(
-                classId, request.getLecturerId(), startDate, startDate);
+                classId, lecturerId, startDate, startDate);
 
         if (conflicts > 0) {
             throw new ValidationException("Lecturer has already been assigned to this class on " + startDate);
@@ -87,6 +88,7 @@ public class ClassTeacherService {
         classTeacher.setStartDate(startDate);
         classTeacher.setEndDate(null); // Chưa có ngày kết thúc
         classTeacher.setAssignedBy(assignedByUser);
+        classTeacher.setNote(request.getNote()); // Set note từ request
         classTeacher.setCreatedAt(LocalDateTime.now());
         classTeacher.setUpdatedAt(LocalDateTime.now()); // Cần set updated_at vì NOT NULL
 
@@ -98,20 +100,22 @@ public class ClassTeacherService {
     /**
      * Xóa lecturer khỏi lớp học (soft delete bằng cách set end_date)
      */
-    public void removeLecturer(Integer classId, RemoveLecturerRequest request, Integer revokedBy) {
+    public void removeLecturer(Integer classId, Integer lecturerId, RemoveLecturerRequest request, Integer revokedBy) {
         // Tìm assignment hiện tại
         ClassTeacher assignment = classTeacherRepository
-                .findActiveAssignment(classId, request.getLecturerId())
+                .findActiveAssignment(classId, lecturerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active assignment not found for lecturer " + request.getLecturerId() + " in class "
+                        "Active assignment not found for lecturer " + lecturerId + " in class "
                                 + classId));
 
         // Lấy User entity cho revokedBy
         User revokedByUser = revokedBy != null ? userRepository.findById(revokedBy).orElse(null) : null;
 
-        // Set end date = hôm nay để "remove" assignment
-        assignment.setEndDate(LocalDate.now());
+        // Set end date (mặc định hôm nay nếu không có trong request)
+        LocalDate endDate = request.getEndDate() != null ? request.getEndDate() : LocalDate.now();
+        assignment.setEndDate(endDate);
         assignment.setRevokedBy(revokedByUser);
+        assignment.setNote(request.getNote()); // Update note nếu có
         assignment.setUpdatedAt(LocalDateTime.now());
 
         classTeacherRepository.save(assignment);
