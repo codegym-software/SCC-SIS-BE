@@ -32,15 +32,16 @@ public class ClassTeacherController {
      * Gán lecturer vào lớp học
      * Chỉ ACADEMIC_STAFF hoặc SUPER_ADMIN mới có quyền
      */
-    @PostMapping("/{classId}/lecturers")
+    @PostMapping("/{classId}/lecturers/{lecturerId}")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
     public ResponseEntity<ClassLecturerResponse> assignLecturer(
             @PathVariable Integer classId,
+            @PathVariable Integer lecturerId,
             @Valid @RequestBody AssignLecturerRequest request,
             Authentication authentication) {
 
         Integer assignedBy = getCurrentUserId(authentication);
-        ClassLecturerResponse response = classTeacherService.assignLecturer(classId, request, assignedBy);
+        ClassLecturerResponse response = classTeacherService.assignLecturer(classId, lecturerId, request, assignedBy);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -49,15 +50,16 @@ public class ClassTeacherController {
      * Xóa lecturer khỏi lớp học
      * Chỉ ACADEMIC_STAFF hoặc SUPER_ADMIN mới có quyền
      */
-    @DeleteMapping("/{classId}/lecturers")
+    @DeleteMapping("/{classId}/lecturers/{lecturerId}")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
     public ResponseEntity<Void> removeLecturer(
             @PathVariable Integer classId,
+            @PathVariable Integer lecturerId,
             @Valid @RequestBody RemoveLecturerRequest request,
             Authentication authentication) {
 
         Integer revokedBy = getCurrentUserId(authentication);
-        classTeacherService.removeLecturer(classId, request, revokedBy);
+        classTeacherService.removeLecturer(classId, lecturerId, request, revokedBy);
 
         return ResponseEntity.noContent().build();
     }

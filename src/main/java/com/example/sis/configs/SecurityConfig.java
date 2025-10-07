@@ -92,9 +92,9 @@ public class SecurityConfig {
                                                 .authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/*/lecturers/**")
                                                 .authenticated()
-                                                .requestMatchers(HttpMethod.POST, "/api/classes/*/lecturers")
+                                                .requestMatchers(HttpMethod.POST, "/api/classes/*/lecturers/*")
                                                 .authenticated()
-                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers/*")
                                                 .authenticated()
 
                                                 .anyRequest().authenticated())

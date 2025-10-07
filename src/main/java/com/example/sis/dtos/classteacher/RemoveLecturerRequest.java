@@ -1,23 +1,32 @@
 package com.example.sis.dtos.classteacher;
 
-import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
 
 public class RemoveLecturerRequest {
-    @NotNull(message = "Lecturer ID is required")
-    private Integer lecturerId;
+    private LocalDate endDate;
+    private String note;
 
     public RemoveLecturerRequest() {
     }
 
-    public RemoveLecturerRequest(Integer lecturerId) {
-        this.lecturerId = lecturerId;
+    public RemoveLecturerRequest(LocalDate endDate, String note) {
+        this.endDate = endDate;
+        this.note = note;
     }
 
-    public Integer getLecturerId() {
-        return lecturerId;
+    public LocalDate getEndDate() {
+        return endDate;
     }
 
-    public void setLecturerId(Integer lecturerId) {
-        this.lecturerId = lecturerId;
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }
