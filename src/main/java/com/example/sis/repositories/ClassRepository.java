@@ -81,4 +81,24 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Integer> {
             @Param("centerId") Integer centerId,
             @Param("name") String name,
             @Param("excludeClassId") Integer excludeClassId);
+
+    /**
+     * Lấy centerId của lớp (phục vụ kiểm quyền theo trung tâm)
+     */
+    @Query("SELECT c.center.centerId FROM ClassEntity c WHERE c.classId = :classId")
+    Integer findCenterIdByClassId(@Param("classId") Integer classId);
+
+    /**
+     * Kiểm tra lớp có được phép ghi danh học viên (chưa kết thúc, chưa bị huỷ)
+     */
+    @Query("""
+        SELECT CASE WHEN (c.deletedAt IS NULL
+                       AND c.status <> com.example.sis.models.ClassEntity.ClassStatus.CANCELLED
+                       AND c.status <> com.example.sis.models.ClassEntity.ClassStatus.FINISHED)
+                    THEN true ELSE false END
+        FROM ClassEntity c
+        WHERE c.classId = :classId
+        """)
+    Boolean isEnrollable(@Param("classId") Integer classId);
+
 }
