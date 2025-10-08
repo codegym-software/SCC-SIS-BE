@@ -1,7 +1,8 @@
 package com.example.sis.securities;
 
-import com.example.sis.dtos.userrole.UserRoleRequest; // NEW
+import com.example.sis.dtos.userrole.UserRoleRequest;
 import com.example.sis.models.Role;
+import com.example.sis.repositories.ClassRepository;
 import com.example.sis.repositories.RoleRepository;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.utils.RoleScopeUtil;
@@ -11,92 +12,110 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Authorization service dùng trong @PreAuthorize:
+ * Ví dụ: @PreAuthorize("@authz.hasAcademicAccessForClass(authentication, #classId)")
+ */
 @Component("authz")
 public class AuthzService {
 
     private final UserRoleRepository userRoleRepo;
     private final RoleRepository roleRepo;
+    private final ClassRepository classRepo;
 
-    public AuthzService(UserRoleRepository userRoleRepo, RoleRepository roleRepo) {
+    public AuthzService(UserRoleRepository userRoleRepo,
+                        RoleRepository roleRepo,
+                        ClassRepository classRepo) {
         this.userRoleRepo = userRoleRepo;
         this.roleRepo = roleRepo;
+        this.classRepo = classRepo;
     }
 
+    // ===================== JWT Helper =====================
     private String getSub(Authentication authentication) {
-        if (authentication == null)
-            return null;
+        if (authentication == null) return null;
         Object principal = authentication.getPrincipal();
-        if (!(principal instanceof Jwt jwt))
-            return null;
+        if (!(principal instanceof Jwt jwt)) return null;
         String sub = jwt.getClaimAsString("sub");
-        if (sub == null || sub.isBlank())
-            return null;
-        return sub;
+        return (sub == null || sub.isBlank()) ? null : sub;
     }
 
-    /** Has a specific role code? (roles.code in DB) */
+    // ===================== ROLE-LEVEL CHECKS =====================
+
+    /** Kiểm tra có role code cụ thể không */
     public boolean hasRole(Authentication authentication, String roleCode) {
         String sub = getSub(authentication);
-        if (sub == null)
-            return false;
+        if (sub == null) return false;
         return userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, roleCode);
     }
 
-    /** Super Admin? */
+    /** Là Super Admin? */
     public boolean isSuperAdmin(Authentication authentication) {
         return hasRole(authentication, "SUPER_ADMIN");
     }
 
+    // ===================== CENTER-LEVEL ACCESS =====================
+
     /**
      * Center access:
-     * - SA always pass
-     * - else: must be CENTER_MANAGER at that center
+     * - SA luôn pass
+     * - Ngược lại: cần CENTER_MANAGER tại center đó
      */
     public boolean hasCenterAccess(Authentication authentication, Integer centerId) {
         String sub = getSub(authentication);
-        if (sub == null)
-            return false;
-        if (isSuperAdmin(authentication))
-            return true;
-        if (centerId == null)
-            return false;
+        if (sub == null) return false;
+        if (isSuperAdmin(authentication)) return true;
+        if (centerId == null) return false;
 
         List<String> allowed = List.of("CENTER_MANAGER");
         return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
     }
 
-    /** Legacy rule (kept) */
-    public boolean canListUsers(Authentication authentication, Integer centerId) {
-        return hasCenterAccess(authentication, centerId);
+    /**
+     * Academic access:
+     * - SA luôn pass
+     * - Ngược lại: cần ACADEMIC_STAFF hoặc CENTER_MANAGER tại center đó
+     */
+    public boolean hasAcademicAccess(Authentication authentication, Integer centerId) {
+        String sub = getSub(authentication);
+        if (sub == null) return false;
+        if (isSuperAdmin(authentication)) return true;
+        if (centerId == null) return false;
+
+        List<String> allowed = List.of("ACADEMIC_STAFF", "CENTER_MANAGER");
+        return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
     }
 
     /**
-     * Can assign a role to user at (optional) center?
-     * - GLOBAL role: centerId must be null, and only SA can assign
-     * - CENTER role: centerId required; SA or CM(centerId)
+     * Dùng trực tiếp trong @PreAuthorize:
+     *   @authz.hasAcademicAccessForClass(authentication, #classId)
      */
+    public boolean hasAcademicAccessForClass(Authentication authentication, Integer classId) {
+        Integer centerId = classRepo.findCenterIdByClassId(classId);
+        return hasAcademicAccess(authentication, centerId);
+    }
+
+    // ===================== USER-ROLE MANAGEMENT =====================
+
+    /** Có thể assign role cho user ở (optional) center không? */
     public boolean canAssignUserRole(Authentication authentication, Integer roleId, Integer centerId) {
         Role role = roleRepo.findById(roleId).orElse(null);
-        if (role == null)
-            return false;
+        if (role == null) return false;
 
         String code = role.getCode();
         if (RoleScopeUtil.isExclusiveGlobal(code)) {
+            // GLOBAL role: chỉ SA, centerId phải null
             return centerId == null && isSuperAdmin(authentication);
         }
-        // default center-scoped
+        // CENTER role: SA hoặc CM của center đó
         return centerId != null && hasCenterAccess(authentication, centerId);
     }
 
-    /**
-     * Bulk guard: every item must satisfy canAssignUserRole(...).
-     */
+    /** Bulk guard cho assign nhiều roles */
     public boolean canAssignUserRoles(Authentication authentication, List<UserRoleRequest> requests) {
-        if (requests == null || requests.isEmpty())
-            return false;
+        if (requests == null || requests.isEmpty()) return false;
         for (UserRoleRequest r : requests) {
-            if (r == null || r.getRoleId() == null)
-                return false;
+            if (r == null || r.getRoleId() == null) return false;
             Integer centerId = r.getCenterId();
             if (!canAssignUserRole(authentication, r.getRoleId(), centerId))
                 return false;
@@ -104,11 +123,7 @@ public class AuthzService {
         return true;
     }
 
-    /**
-     * Can modify (revoke) a userRole by id?
-     * - GLOBAL assignment (centerId=null) → SA only
-     * - CENTER assignment → SA or CM(centerId)
-     */
+    /** Có thể revoke userRole theo id? */
     public boolean canModifyUserRole(Authentication authentication, Integer userRoleId) {
         Integer centerId = userRoleRepo.findCenterIdByUserRoleId(userRoleId);
         if (centerId == null)
@@ -116,27 +131,12 @@ public class AuthzService {
         return hasCenterAccess(authentication, centerId);
     }
 
-    /**
-     * Academic Staff access:
-     * - SA always pass
-     * - else: must be ACADEMIC_STAFF at that center
-     */
-    public boolean hasAcademicAccess(Authentication authentication, Integer centerId) {
-        String sub = getSub(authentication);
-        if (sub == null)
-            return false;
-        if (isSuperAdmin(authentication))
-            return true;
-        if (centerId == null)
-            return false;
-
-        List<String> allowed = List.of("ACADEMIC_STAFF", "CENTER_MANAGER");
-        return userRoleRepo.userHasAnyActiveRoleAtCenter(sub, allowed, centerId);
+    // ===================== LEGACY SUPPORT =====================
+    public boolean canListUsers(Authentication authentication, Integer centerId) {
+        return hasCenterAccess(authentication, centerId);
     }
 
-    /**
-     * Can manage classes: SA or Academic Staff/Center Manager at specific center
-     */
+    /** Quản lý lớp học (SA hoặc Academic/CENTER_MANAGER tại center đó) */
     public boolean canManageClasses(Authentication authentication, Integer centerId) {
         return hasAcademicAccess(authentication, centerId);
     }

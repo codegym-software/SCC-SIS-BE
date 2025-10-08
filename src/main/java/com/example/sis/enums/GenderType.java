@@ -1,6 +1,8 @@
+// com.example.sis.enums.GenderType.java
 package com.example.sis.enums;
 
 public enum GenderType {
-    male,  // Nam
-    female // Nữ
+    MALE,   // Nam
+    FEMALE, // Nữ
+    OTHER   // Khác
 }
