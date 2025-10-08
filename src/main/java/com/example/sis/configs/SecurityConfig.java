@@ -93,7 +93,18 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PATCH,  "/api/classes/*/students/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/*/students/**").authenticated()
 
-                                        .anyRequest().authenticated())
+                                        
+                                                // Class-Lecturer assignments
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/lecturers")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/lecturers/**")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/classes/*/lecturers/*")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers/*")
+                                                .authenticated()
+
+                                                .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
                 return http.build();
