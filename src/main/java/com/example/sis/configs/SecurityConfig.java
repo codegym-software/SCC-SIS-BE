@@ -87,6 +87,13 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PUT, "/api/classes/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/**").authenticated()
 
+                                                // Enrollments (students in class)
+                                                .requestMatchers(HttpMethod.GET,    "/api/classes/*/students/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST,   "/api/classes/*/students").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH,  "/api/classes/*/students/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/students/**").authenticated()
+
+                                        
                                                 // Class-Lecturer assignments
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/*/lecturers")
                                                 .authenticated()
