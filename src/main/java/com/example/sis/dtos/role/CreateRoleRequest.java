@@ -3,6 +3,8 @@ package com.example.sis.dtos.role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public class CreateRoleRequest {
 
     @NotBlank(message = "Mã role không được để trống")
@@ -20,16 +22,21 @@ public class CreateRoleRequest {
 
     private Boolean active = true;
 
+    // Danh sách ID các quyền để gán cho role mới
+    private List<Integer> permissionIds;
+
     // Constructors
     public CreateRoleRequest() {
     }
 
-    public CreateRoleRequest(String code, String name, String description, String scope, Boolean active) {
+    public CreateRoleRequest(String code, String name, String description, String scope, Boolean active,
+            List<Integer> permissionIds) {
         this.code = code;
         this.name = name;
         this.description = description;
         this.scope = scope;
         this.active = active;
+        this.permissionIds = permissionIds;
     }
 
     // Getters and Setters
@@ -71,5 +78,13 @@ public class CreateRoleRequest {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public List<Integer> getPermissionIds() {
+        return permissionIds;
+    }
+
+    public void setPermissionIds(List<Integer> permissionIds) {
+        this.permissionIds = permissionIds;
     }
 }
