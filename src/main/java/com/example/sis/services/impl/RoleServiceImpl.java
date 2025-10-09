@@ -1,11 +1,15 @@
 package com.example.sis.services.impl;
 
-import com.example.sis.enums.RoleScope;                 // <— đường dẫn đúng
+import com.example.sis.enums.RoleScope; // <— đường dẫn đúng
 import com.example.sis.dtos.role.CreateRoleRequest;
 import com.example.sis.dtos.role.RoleResponse;
 import com.example.sis.dtos.role.UpdateRoleRequest;
 import com.example.sis.models.Role;
+import com.example.sis.models.Permission;
+import com.example.sis.models.RolePermission;
 import com.example.sis.repositories.RoleRepository;
+import com.example.sis.repositories.PermissionRepository;
+import com.example.sis.repositories.RolePermissionRepository;
 import com.example.sis.services.RoleService;
 import com.example.sis.utils.RoleScopeUtil;
 import org.springframework.data.domain.Page;
@@ -21,9 +25,15 @@ import java.util.List;
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
 
-    public RoleServiceImpl(RoleRepository roleRepository) {
+    public RoleServiceImpl(RoleRepository roleRepository,
+            PermissionRepository permissionRepository,
+            RolePermissionRepository rolePermissionRepository) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
+        this.rolePermissionRepository = rolePermissionRepository;
     }
 
     @Override
@@ -53,6 +63,23 @@ public class RoleServiceImpl implements RoleService {
         role.setUpdatedAt(LocalDateTime.now());
 
         Role saved = roleRepository.save(role);
+
+        // Gán quyền cho role nếu có permissionIds trong request
+        if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
+            // Validate tất cả permissions tồn tại
+            List<Permission> permissions = permissionRepository.findAllById(request.getPermissionIds());
+            if (permissions.size() != request.getPermissionIds().size()) {
+                throw new RuntimeException("Một hoặc nhiều permission ID không tồn tại");
+            }
+
+            // Tạo role_permissions records
+            for (Permission permission : permissions) {
+                RolePermission rolePermission = new RolePermission(saved, permission, null); // grantedBy null vì tạo từ
+                                                                                             // API
+                rolePermissionRepository.save(rolePermission);
+            }
+        }
+
         return convertToResponse(saved);
     }
 
@@ -97,14 +124,16 @@ public class RoleServiceImpl implements RoleService {
                 role.getCode(),
                 role.getName(),
                 resolveScope(role.getCode()),
-                role.isActive()
-        );
+                role.isActive());
     }
 
     private RoleScope resolveScope(String code) {
-        if (code == null) return RoleScope.CENTER;
-        if (RoleScopeUtil.isExclusiveGlobal(code)) return RoleScope.GLOBAL;
-        if (RoleScopeUtil.isCenterScoped(code))   return RoleScope.CENTER;
+        if (code == null)
+            return RoleScope.CENTER;
+        if (RoleScopeUtil.isExclusiveGlobal(code))
+            return RoleScope.GLOBAL;
+        if (RoleScopeUtil.isCenterScoped(code))
+            return RoleScope.CENTER;
         return RoleScope.CENTER;
     }
 }
