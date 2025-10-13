@@ -170,8 +170,12 @@ public class RolePermissionServiceImpl implements RolePermissionService {
                 r.getRoleId(),
                 r.getCode(),
                 r.getName(),
-                resolveScope(r.getCode()),
-                r.isActive()
+                r.isActive(),
+                r.getCreatedAt(),
+                r.getUpdatedAt(),
+                0L, // userCount sẽ được tính riêng nếu cần
+                Set.of(), // permissionIds sẽ được load riêng nếu cần
+                Map.of() // summary sẽ được build riêng nếu cần
         );
     }
 

@@ -5,3 +5,9 @@ public class ValidationException extends RuntimeException {
         super(message);
     }
 }
+
+class NoChangesException extends RuntimeException {
+    public NoChangesException(String message) {
+        super(message);
+    }
+}

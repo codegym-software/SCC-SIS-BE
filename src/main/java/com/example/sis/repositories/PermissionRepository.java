@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,4 +43,15 @@ public interface PermissionRepository extends JpaRepository<Permission, Integer>
                             @Param("category") String category,
                             @Param("active") Boolean active,
                             Pageable pageable);
+
+    // NEW: Count active permissions grouped by category
+    @Query("SELECT p.category, COUNT(p) FROM Permission p WHERE p.active = true GROUP BY p.category")
+    List<Object[]> countActiveGroupByCategory();
+
+    // NEW: Find permissions by role ID (JOIN role_permissions)
+    @Query("SELECT p FROM Permission p JOIN RolePermission rp ON p.permissionId = rp.permission.permissionId WHERE rp.role.roleId = :roleId")
+    List<Permission> findByRoleId(@Param("roleId") Integer roleId);
+
+    // NEW: Find permissions by list of permission IDs
+    List<Permission> findByPermissionIdIn(Collection<Integer> permissionIds);
 }

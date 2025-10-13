@@ -2,6 +2,7 @@ package com.example.sis.controllers;
 
 import com.example.sis.dtos.role.CreateRoleRequest;
 import com.example.sis.dtos.role.RoleResponse;
+import com.example.sis.dtos.role.RoleListResponse;
 import com.example.sis.dtos.role.UpdateRoleRequest;
 import com.example.sis.services.RoleService;
 import jakarta.validation.Valid;
@@ -21,14 +22,14 @@ public class RoleController {
     public RoleController(RoleService roleService) { this.roleService = roleService; }
 
     /**
-     * GET /api/roles?active=true|false
-     * - active = null or true  -> return only active roles (default)
-     * - active = false         -> return ALL roles
+     * GET /api/roles
+     * Trả về danh sách các vai trò đang active với thông tin bổ sung
+     * Hỗ trợ tham số preview để tùy chỉnh số lượng permission preview
      */
     @GetMapping
-    public ResponseEntity<List<RoleResponse>> listRoles(
-            @RequestParam(value = "active", required = false) Boolean active) {
-        return ResponseEntity.ok(roleService.listRoles(active));
+    public ResponseEntity<RoleListResponse> listRoles(
+            @RequestParam(value = "preview", required = false) Integer preview) {
+        return ResponseEntity.ok(roleService.listRolesNew(preview));
     }
 
     /**

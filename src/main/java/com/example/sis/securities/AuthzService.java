@@ -32,6 +32,10 @@ public class AuthzService {
     }
 
     // ===================== JWT Helper =====================
+    public String getCurrentUserId(Authentication authentication) {
+        return getSub(authentication);
+    }
+
     private String getSub(Authentication authentication) {
         if (authentication == null) return null;
         Object principal = authentication.getPrincipal();
