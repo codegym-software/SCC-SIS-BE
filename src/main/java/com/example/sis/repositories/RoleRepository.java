@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository // có thể bỏ, nhưng để cũng không sao
@@ -39,4 +40,7 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
 
     // get-by-id chỉ khi active
     Optional<Role> findByRoleIdAndActiveTrue(Integer roleId);
+
+    // Lấy tất cả active roles sắp xếp theo createdAt tăng dần
+    List<Role> findByActiveTrueOrderByCreatedAtAsc();
 }

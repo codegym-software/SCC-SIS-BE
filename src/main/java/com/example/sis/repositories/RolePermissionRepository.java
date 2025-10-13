@@ -135,4 +135,13 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
         """)
     int deleteByRoleIdAndPermissionIds(@Param("roleId") Integer roleId,
                                        @Param("permissionIds") List<Integer> permissionIds);
+
+    // ---- NEW: Get role permissions with permission details for multiple roles (batch query) ----
+    @Query("""
+        SELECT rp FROM RolePermission rp
+        JOIN FETCH rp.permission p
+        WHERE rp.role.roleId IN :roleIds AND p.active = true
+        ORDER BY rp.role.roleId, p.category, p.name
+        """)
+    List<RolePermission> findByRoleIdInWithPermission(@Param("roleIds") List<Integer> roleIds);
 }

@@ -142,4 +142,12 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
   int markRevokedByIds(@Param("ids") List<Integer> userRoleIds,
       @Param("now") LocalDateTime now,
       @Param("by") String revokedBy);
+
+  // NEW: count active user assignments by role ID
+  @Query("SELECT COUNT(ur) FROM UserRole ur WHERE ur.role.roleId = :roleId AND ur.revokedAt IS NULL")
+  long countByRoleId(@Param("roleId") Integer roleId);
+
+  // NEW: count active user assignments by multiple role IDs (batch query)
+  @Query("SELECT ur.role.roleId, COUNT(ur) FROM UserRole ur WHERE ur.role.roleId IN :roleIds AND ur.revokedAt IS NULL GROUP BY ur.role.roleId")
+  List<Object[]> countByRoleIdInGroup(@Param("roleIds") List<Integer> roleIds);
 }

@@ -1,34 +1,31 @@
 package com.example.sis.dtos.role;
 
 import java.time.LocalDateTime;
-import java.util.Set;
-import java.util.Map;
+import java.util.List;
 
-public class RoleResponse {
+public class RoleListItem {
     private Integer roleId;
     private String code;
     private String name;
     private boolean active;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
     private Long userCount;
-    private Set<Integer> permissionIds;
-    private Map<String, Object> summary;
+    private Integer permissionCount;
+    private List<String> permissionNamesPreview;
 
-    public RoleResponse() {}
+    public RoleListItem() {}
 
-    public RoleResponse(Integer roleId, String code, String name, boolean active,
-                       LocalDateTime createdAt, LocalDateTime updatedAt, Long userCount,
-                       Set<Integer> permissionIds, Map<String, Object> summary) {
+    public RoleListItem(Integer roleId, String code, String name, boolean active,
+                       LocalDateTime createdAt, Long userCount, Integer permissionCount,
+                       List<String> permissionNamesPreview) {
         this.roleId = roleId;
         this.code = code;
         this.name = name;
         this.active = active;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
         this.userCount = userCount;
-        this.permissionIds = permissionIds;
-        this.summary = summary;
+        this.permissionCount = permissionCount;
+        this.permissionNamesPreview = permissionNamesPreview;
     }
 
     public Integer getRoleId() { return roleId; }
@@ -46,15 +43,12 @@ public class RoleResponse {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
     public Long getUserCount() { return userCount; }
     public void setUserCount(Long userCount) { this.userCount = userCount; }
 
-    public Set<Integer> getPermissionIds() { return permissionIds; }
-    public void setPermissionIds(Set<Integer> permissionIds) { this.permissionIds = permissionIds; }
+    public Integer getPermissionCount() { return permissionCount; }
+    public void setPermissionCount(Integer permissionCount) { this.permissionCount = permissionCount; }
 
-    public Map<String, Object> getSummary() { return summary; }
-    public void setSummary(Map<String, Object> summary) { this.summary = summary; }
+    public List<String> getPermissionNamesPreview() { return permissionNamesPreview; }
+    public void setPermissionNamesPreview(List<String> permissionNamesPreview) { this.permissionNamesPreview = permissionNamesPreview; }
 }
