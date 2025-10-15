@@ -61,9 +61,11 @@ public class ProgramService {
                 program.getProgramId(),
                 program.getCode(),
                 program.getName(),
+                program.getDescription(),
                 program.getDurationHours(),
                 program.getDeliveryMode(),
                 program.getCategoryCode(),
-                program.getLevel());
+                program.getLevel(),
+                program.getIsActive());
     }
 }
