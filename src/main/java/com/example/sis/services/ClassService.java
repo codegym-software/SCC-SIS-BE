@@ -4,6 +4,7 @@ import com.example.sis.dtos.classes.ClassLiteResponse;
 import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.dtos.classes.CreateClassRequest;
 import com.example.sis.dtos.classes.UpdateClassRequest;
+import com.example.sis.enums.StudyDay;
 import com.example.sis.models.Center;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.models.Program;
@@ -15,8 +16,13 @@ import com.example.sis.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,6 +65,11 @@ public class ClassService {
             if (request.getStartDate().isAfter(request.getEndDate())) {
                 throw new RuntimeException("Ngày bắt đầu không thể sau ngày kết thúc");
             }
+
+            // Validate study days based on date range
+            if (request.getStudyDays() != null && !request.getStudyDays().isEmpty()) {
+                validateStudyDays(request.getStartDate(), request.getEndDate(), request.getStudyDays());
+            }
         }
 
         // Get created user
@@ -86,6 +97,14 @@ public class ClassService {
         classEntity.setUpdatedBy(creator);
 
         ClassEntity savedClass = classRepository.save(classEntity);
+
+        // Force load lazy relationships before converting to response
+        savedClass.getCenter().getName(); // Trigger lazy load
+        savedClass.getProgram().getName(); // Trigger lazy load
+        if (savedClass.getCreatedBy() != null) {
+            savedClass.getCreatedBy().getUserId(); // Trigger lazy load
+        }
+
         return convertToClassResponse(savedClass);
     }
 
@@ -110,6 +129,11 @@ public class ClassService {
             if (request.getStartDate().isAfter(request.getEndDate())) {
                 throw new RuntimeException("Ngày bắt đầu không thể sau ngày kết thúc");
             }
+
+            // Validate study days based on date range
+            if (request.getStudyDays() != null && !request.getStudyDays().isEmpty()) {
+                validateStudyDays(request.getStartDate(), request.getEndDate(), request.getStudyDays());
+            }
         }
 
         // Get updater user
@@ -131,6 +155,14 @@ public class ClassService {
         existingClass.setUpdatedBy(updater);
 
         ClassEntity savedClass = classRepository.save(existingClass);
+
+        // Force load lazy relationships before converting to response
+        savedClass.getCenter().getName(); // Trigger lazy load
+        savedClass.getProgram().getName(); // Trigger lazy load
+        if (savedClass.getUpdatedBy() != null) {
+            savedClass.getUpdatedBy().getUserId(); // Trigger lazy load
+        }
+
         return convertToClassResponse(savedClass);
     }
 
@@ -230,5 +262,113 @@ public class ClassService {
                 classEntity.getProgram().getName(),
                 classEntity.getCenter().getName(),
                 classEntity.getStatus());
+    }
+
+    /**
+     * Validate study days against date range
+     * Logic:
+     * - Nếu khoảng thời gian >= 7 ngày (1 tuần): Chấp nhận mọi ngày học
+     * - Nếu khoảng thời gian < 7 ngày: Chỉ chấp nhận các ngày nằm trong khoảng
+     * startDate -> endDate
+     */
+    private void validateStudyDays(LocalDate startDate, LocalDate endDate, List<StudyDay> studyDays) {
+        long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+
+        // Nếu khoảng thời gian >= 7 ngày (1 tuần), chấp nhận mọi ngày
+        if (daysBetween >= 7) {
+            return;
+        }
+
+        // Nếu < 7 ngày, kiểm tra các ngày học có nằm trong khoảng không
+        Set<DayOfWeek> validDaysOfWeek = new HashSet<>();
+        LocalDate current = startDate;
+        while (!current.isAfter(endDate)) {
+            validDaysOfWeek.add(current.getDayOfWeek());
+            current = current.plusDays(1);
+        }
+
+        for (StudyDay studyDay : studyDays) {
+            DayOfWeek dayOfWeek = convertStudyDayToDayOfWeek(studyDay);
+            if (!validDaysOfWeek.contains(dayOfWeek)) {
+                throw new RuntimeException(
+                        String.format("Ngày học '%s' không hợp lệ. Lớp học < 7 ngày (từ %s đến %s), " +
+                                "các ngày học phải nằm trong khoảng này.",
+                                getStudyDayVietnameseName(studyDay),
+                                getVietnameseDayOfWeek(startDate.getDayOfWeek()),
+                                getVietnameseDayOfWeek(endDate.getDayOfWeek())));
+            }
+        }
+    }
+
+    /**
+     * Convert StudyDay enum to Java DayOfWeek
+     */
+    private DayOfWeek convertStudyDayToDayOfWeek(StudyDay studyDay) {
+        switch (studyDay) {
+            case MONDAY:
+                return DayOfWeek.MONDAY;
+            case TUESDAY:
+                return DayOfWeek.TUESDAY;
+            case WEDNESDAY:
+                return DayOfWeek.WEDNESDAY;
+            case THURSDAY:
+                return DayOfWeek.THURSDAY;
+            case FRIDAY:
+                return DayOfWeek.FRIDAY;
+            case SATURDAY:
+                return DayOfWeek.SATURDAY;
+            case SUNDAY:
+                return DayOfWeek.SUNDAY;
+            default:
+                throw new IllegalArgumentException("Invalid StudyDay: " + studyDay);
+        }
+    }
+
+    /**
+     * Get Vietnamese name for StudyDay
+     */
+    private String getStudyDayVietnameseName(StudyDay studyDay) {
+        switch (studyDay) {
+            case MONDAY:
+                return "Thứ 2";
+            case TUESDAY:
+                return "Thứ 3";
+            case WEDNESDAY:
+                return "Thứ 4";
+            case THURSDAY:
+                return "Thứ 5";
+            case FRIDAY:
+                return "Thứ 6";
+            case SATURDAY:
+                return "Thứ 7";
+            case SUNDAY:
+                return "Chủ nhật";
+            default:
+                return studyDay.name();
+        }
+    }
+
+    /**
+     * Get Vietnamese name for DayOfWeek
+     */
+    private String getVietnameseDayOfWeek(DayOfWeek dayOfWeek) {
+        switch (dayOfWeek) {
+            case MONDAY:
+                return "Thứ 2";
+            case TUESDAY:
+                return "Thứ 3";
+            case WEDNESDAY:
+                return "Thứ 4";
+            case THURSDAY:
+                return "Thứ 5";
+            case FRIDAY:
+                return "Thứ 6";
+            case SATURDAY:
+                return "Thứ 7";
+            case SUNDAY:
+                return "Chủ nhật";
+            default:
+                return dayOfWeek.name();
+        }
     }
 }
