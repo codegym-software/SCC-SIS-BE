@@ -1,6 +1,7 @@
 package com.example.sis.configs;
 
 import com.example.sis.configs.DefaultRoleAutoAssignFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +11,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,6 +25,9 @@ import java.util.stream.Collectors;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
+        @Autowired
+        private DefaultRoleAutoAssignFilter defaultRoleAutoAssignFilter;
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http,
@@ -37,6 +42,7 @@ public class SecurityConfig {
 
                                                 // Auth profile
                                                 .requestMatchers("/api/auth/profile").authenticated()
+                                                .requestMatchers("/api/users/profile").authenticated()
 
                                                 // Users + User Views + Stats
                                                 .requestMatchers(HttpMethod.GET, "/api/users").authenticated()
@@ -113,9 +119,12 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/user-roles/**").authenticated()
 
                                                 .anyRequest().authenticated())
-                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
-
-                return http.build();
+                                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
+               
+                                // Đăng ký filter sau BearerTokenAuthenticationFilter
+                                http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
+               
+                                return http.build();
         }
 
         @Bean

@@ -48,4 +48,8 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
 
     // Lấy tất cả active roles sắp xếp theo createdAt tăng dần
     List<Role> findByActiveTrueOrderByCreatedAtAsc();
+
+    // Tìm ID của role active theo code
+    @Query("SELECT r.roleId FROM Role r WHERE r.code = :code AND r.active = true")
+    Optional<Integer> findIdByCode(@Param("code") String code);
 }
