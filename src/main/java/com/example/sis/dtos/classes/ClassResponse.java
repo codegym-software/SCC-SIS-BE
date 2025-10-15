@@ -1,10 +1,13 @@
 package com.example.sis.dtos.classes;
 
+import com.example.sis.enums.StudyDay;
+import com.example.sis.enums.StudyTime;
 import com.example.sis.models.ClassEntity;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ClassResponse {
     private Integer classId;
@@ -25,6 +28,10 @@ public class ClassResponse {
     private ClassEntity.ClassStatus status;
     private String room;
     private Integer capacity;
+
+    // Study schedule
+    private List<StudyDay> studyDays;
+    private StudyTime studyTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
@@ -174,5 +181,21 @@ public class ClassResponse {
 
     public void setUpdatedBy(Integer updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public List<StudyDay> getStudyDays() {
+        return studyDays;
+    }
+
+    public void setStudyDays(List<StudyDay> studyDays) {
+        this.studyDays = studyDays;
+    }
+
+    public StudyTime getStudyTime() {
+        return studyTime;
+    }
+
+    public void setStudyTime(StudyTime studyTime) {
+        this.studyTime = studyTime;
     }
 }

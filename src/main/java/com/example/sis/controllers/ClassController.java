@@ -36,8 +36,10 @@ public class ClassController {
 
     /**
      * Tạo lớp học mới
-     * Chỉ Super Admin hoặc Academic Staff tại trung tâm đó mới được
-     * tạo
+     * - Super Admin: có thể tạo lớp cho bất kỳ trung tâm nào, centerId lấy từ
+     * request body
+     * - Academic Staff: chỉ tạo lớp cho trung tâm của mình, centerId tự động lấy từ
+     * user hiện tại
      */
     @PostMapping
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
@@ -46,11 +48,22 @@ public class ClassController {
             Authentication authentication) {
         Integer createdBy = getCurrentUserId(authentication);
 
-        // Lấy centerId từ user hiện tại
-        Integer centerId = getCurrentUserCenterId(authentication);
-        if (centerId == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .build(); // User không thuộc trung tâm nào
+        Integer centerId;
+
+        // Nếu là Super Admin, lấy centerId từ request body
+        if (isCurrentUserSuperAdmin(authentication)) {
+            if (request.getCenterId() == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            centerId = request.getCenterId();
+        } else {
+            // Nếu là Academic Staff, tự động lấy centerId từ user hiện tại
+            centerId = getCurrentUserCenterId(authentication);
+            if (centerId == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            // Override centerId từ request body bằng centerId của user
+            request.setCenterId(centerId);
         }
 
         ClassResponse classResponse = classService.createClass(request, centerId, createdBy);
