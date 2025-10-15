@@ -4,33 +4,47 @@ import com.example.sis.enums.RoleScope;
 
 public class AssignmentItemResponse {
 
-    private Integer roleId;
-    private String roleCode;
-    private String roleName;
+     private Integer assignmentId; // alias của userRoleId - để FE dùng hủy gán vai trò
+     private Integer roleId;
+     private String roleCode;
+     private String roleName;
 
-    private RoleScope scope;   // GLOBAL | CENTER
+     private RoleScope scope;   // GLOBAL | CENTER
 
-    private Integer centerId;  // null nếu GLOBAL
-    private String centerName; // null nếu GLOBAL
+     private Integer centerId;  // null nếu GLOBAL
+     private String centerName; // null nếu GLOBAL
+     private java.time.LocalDateTime assignedAt; // ISO-8601 từ user_roles.assignedAt
 
-    public AssignmentItemResponse() {
-    }
+     public AssignmentItemResponse() {
+     }
 
-    public AssignmentItemResponse(Integer roleId,
+    public AssignmentItemResponse(Integer assignmentId,
+                                  Integer roleId,
                                   String roleCode,
                                   String roleName,
                                   RoleScope scope,
                                   Integer centerId,
-                                  String centerName) {
+                                  String centerName,
+                                  java.time.LocalDateTime assignedAt) {
+        this.assignmentId = assignmentId;
         this.roleId = roleId;
         this.roleCode = roleCode;
         this.roleName = roleName;
         this.scope = scope;
         this.centerId = centerId;
         this.centerName = centerName;
+        this.assignedAt = assignedAt;
     }
 
     // --- getters/setters ---
+
+    public Integer getAssignmentId() {
+        return assignmentId;
+    }
+
+    public void setAssignmentId(Integer assignmentId) {
+        this.assignmentId = assignmentId;
+    }
 
     public Integer getRoleId() {
         return roleId;
@@ -78,5 +92,13 @@ public class AssignmentItemResponse {
 
     public void setCenterName(String centerName) {
         this.centerName = centerName;
+    }
+
+    public java.time.LocalDateTime getAssignedAt() {
+        return assignedAt;
+    }
+
+    public void setAssignedAt(java.time.LocalDateTime assignedAt) {
+        this.assignedAt = assignedAt;
     }
 }

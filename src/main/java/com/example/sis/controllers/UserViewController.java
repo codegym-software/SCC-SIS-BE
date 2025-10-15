@@ -55,4 +55,22 @@ public class UserViewController {
         Map<String, Long> result = userViewService.countByRole(centerId);
         return ResponseEntity.ok(result);
     }
+
+    /**
+     * GET /api/user-views/{userId}
+     *
+     * Lấy thông tin chi tiết của một user kèm danh sách assignments.
+     * Auth: cùng chính sách với GET /api/user-views (ai xem list được thì xem chi tiết được).
+     *
+     * @param userId ID của user cần lấy thông tin
+     * @return UserViewResponse với thông tin user và assignments[]
+     */
+    @GetMapping("/user-views/{userId}")
+    @PreAuthorize("@authz.canListUsers(authentication, null)")
+    public ResponseEntity<UserViewResponse> getUserViewById(
+            @PathVariable Integer userId
+    ) {
+        UserViewResponse result = userViewService.findUserView(userId);
+        return ResponseEntity.ok(result);
+    }
 }

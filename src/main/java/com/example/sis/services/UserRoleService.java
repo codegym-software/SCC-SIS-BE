@@ -2,6 +2,7 @@ package com.example.sis.services;
 
 import com.example.sis.dtos.userrole.UserRoleRequest;
 import com.example.sis.dtos.userrole.UserRoleResponse;
+import com.example.sis.dtos.userrole.UserRoleAssignmentSummaryResponse;
 
 import java.util.List;
 
@@ -28,6 +29,15 @@ public interface UserRoleService {
      */
     List<UserRoleResponse> assignRolesToUser(Integer userId, List<UserRoleRequest> requests, String assignedBy);
 
+    /**
+     * Assign MANY roles to a user with summary response (idempotent per item).
+     * - All items must target the same user.
+     * - Validates scope per item with Vietnamese error messages.
+     * - Enforces business rules: GLOBAL ≤ 1, CENTER ≤ 3.
+     * - Returns summary with createdCount, skippedCount, errors.
+     */
+    UserRoleAssignmentSummaryResponse assignRolesToUserWithSummary(Integer userId, List<UserRoleRequest> requests, String assignedBy);
+
     /** Soft revoke ONE user-role by id (no-op if already revoked). */
     void revokeRoleFromUser(Integer userRoleId, String revokedBy);
 
@@ -42,4 +52,16 @@ public interface UserRoleService {
 
     /** Check if user has a role at a center (centerId may be null for GLOBAL). */
     boolean hasRoleAtCenter(Integer userId, String roleCode, Integer centerId);
+
+    /**
+     * Assign role to user if not already assigned (idempotent).
+     * Used for auto-assignment of default roles.
+     *
+     * Rules:
+     * - GLOBAL: nếu đã có GLOBAL → return; centerId = null
+     * - CENTER: nếu countCenterAssignments ≥3 hoặc centerId=null → return
+     * - Nếu existsByUserIdAndRoleIdAndCenterId → return
+     * - Save UserRole(grantedAt=now)
+     */
+    void assignIfNotExists(Long userId, Integer roleId, com.example.sis.enums.RoleScope scope, Integer centerId);
 }

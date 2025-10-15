@@ -4,6 +4,7 @@ import com.example.sis.enums.RoleScope;
 import com.example.sis.dtos.user.AssignmentItemResponse;
 import com.example.sis.dtos.user.UserAssignmentRow;
 import com.example.sis.dtos.user.UserViewResponse;
+import com.example.sis.exceptions.ResourceNotFoundException;
 import com.example.sis.repositories.UserViewRepository;
 import com.example.sis.services.UserViewService;
 import com.example.sis.utils.RoleScopeUtil;
@@ -63,12 +64,14 @@ public class UserViewServiceImpl implements UserViewService {
                         : RoleScope.CENTER;
 
                 AssignmentItemResponse item = new AssignmentItemResponse(
+                        r.getUserRoleId(), // assignmentId để FE dùng hủy gán vai trò
                         r.getRoleId(),
                         r.getRoleCode(),
                         r.getRoleName(),
                         scope,
                         r.getCenterId(),   // null nếu GLOBAL
-                        r.getCenterName()  // null nếu GLOBAL
+                        r.getCenterName(), // null nếu GLOBAL
+                        r.getAssignedAt()  // ISO-8601 từ user_roles.assignedAt
                 );
                 u.getAssignments().add(item);
             }
@@ -102,5 +105,57 @@ public class UserViewServiceImpl implements UserViewService {
             result.put(e.getKey(), (long) e.getValue().size());
         }
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserViewResponse findUserView(Integer userId) {
+        // Tạo danh sách global roles để xác định scope
+        List<String> globalRoles = List.of("SUPER_ADMIN", "TRAINING_MANAGER");
+
+        // Tìm kiếm với điều kiện chỉ lấy user có userId cụ thể
+        List<UserAssignmentRow> rows = userViewRepository.searchUserViews(null, null, null, globalRoles);
+
+        // Lọc chỉ lấy user có userId cần tìm
+        List<UserAssignmentRow> userRows = rows.stream()
+                .filter(r -> r.getUserId().equals(userId))
+                .toList();
+
+        if (userRows.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy thông tin người dùng với ID: " + userId);
+        }
+
+        // Tạo UserViewResponse từ hàng đầu tiên (chứa thông tin user cơ bản)
+        UserAssignmentRow firstRow = userRows.get(0);
+        UserViewResponse userView = new UserViewResponse();
+        userView.setUserId(firstRow.getUserId());
+        userView.setFullName(firstRow.getFullName());
+        userView.setEmail(firstRow.getEmail());
+        userView.setPhone(firstRow.getPhone());
+        userView.setActive(firstRow.isActive());
+        userView.setSpecialty(firstRow.getSpecialty());
+
+        // Thêm các assignments từ tất cả các hàng
+        for (UserAssignmentRow r : userRows) {
+            if (r.getRoleId() != null && r.getRoleCode() != null) {
+                RoleScope scope = RoleScopeUtil.isExclusiveGlobal(r.getRoleCode())
+                        ? RoleScope.GLOBAL
+                        : RoleScope.CENTER;
+
+                AssignmentItemResponse item = new AssignmentItemResponse(
+                        r.getUserRoleId(), // assignmentId để FE dùng hủy gán vai trò
+                        r.getRoleId(),
+                        r.getRoleCode(),
+                        r.getRoleName(),
+                        scope,
+                        r.getCenterId(),   // null nếu GLOBAL
+                        r.getCenterName(), // null nếu GLOBAL
+                        r.getAssignedAt()  // ISO-8601 từ user_roles.assignedAt
+                );
+                userView.getAssignments().add(item);
+            }
+        }
+
+        return userView;
     }
 }

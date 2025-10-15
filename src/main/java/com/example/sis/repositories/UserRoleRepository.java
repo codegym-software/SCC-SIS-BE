@@ -150,4 +150,20 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
   // NEW: count active user assignments by multiple role IDs (batch query)
   @Query("SELECT ur.role.roleId, COUNT(ur) FROM UserRole ur WHERE ur.role.roleId IN :roleIds AND ur.revokedAt IS NULL GROUP BY ur.role.roleId")
   List<Object[]> countByRoleIdInGroup(@Param("roleIds") List<Integer> roleIds);
+
+  // NEW: check if user has any active role assignments
+  @Query("SELECT COUNT(ur) > 0 FROM UserRole ur WHERE ur.user.userId = :userId AND ur.revokedAt IS NULL")
+  boolean existsByUserId(@Param("userId") Long userId);
+
+  // NEW: check if user has any global role assignments (center is null)
+  @Query("SELECT COUNT(ur) > 0 FROM UserRole ur WHERE ur.user.userId = :userId AND ur.center IS NULL AND ur.revokedAt IS NULL")
+  boolean existsGlobalByUserId(@Param("userId") Long userId);
+
+  // NEW: count center-scoped role assignments for a user
+  @Query("SELECT COUNT(ur) FROM UserRole ur WHERE ur.user.userId = :userId AND ur.center IS NOT NULL AND ur.revokedAt IS NULL")
+  long countCenterAssignments(@Param("userId") Long userId);
+
+  // NEW: check if specific user-role-center assignment exists
+  @Query("SELECT COUNT(ur) > 0 FROM UserRole ur WHERE ur.user.userId = :userId AND ur.role.roleId = :roleId AND COALESCE(ur.center.centerId, -1) = COALESCE(:centerId, -1) AND ur.revokedAt IS NULL")
+  boolean existsByUserIdAndRoleIdAndCenterId(@Param("userId") Long userId, @Param("roleId") Integer roleId, @Param("centerId") Integer centerId);
 }

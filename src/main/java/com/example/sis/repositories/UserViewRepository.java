@@ -37,9 +37,11 @@ public interface UserViewRepository extends JpaRepository<User, Integer> {
       u.phone,
       u.active,
       u.specialty,
+      ur.id,
       r.roleId,
       r.code,
       r.name,
+      ur.assignedAt,
       c.centerId,
       c.name
   )
@@ -70,3 +72,4 @@ public interface UserViewRepository extends JpaRepository<User, Integer> {
 
 
 }
+

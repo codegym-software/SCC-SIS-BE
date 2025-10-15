@@ -41,6 +41,11 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
     // get-by-id chỉ khi active
     Optional<Role> findByRoleIdAndActiveTrue(Integer roleId);
 
+    // find active role by ID (alternative naming for consistency)
+    default Optional<Role> findActiveById(Integer roleId) {
+        return findByRoleIdAndActiveTrue(roleId);
+    }
+
     // Lấy tất cả active roles sắp xếp theo createdAt tăng dần
     List<Role> findByActiveTrueOrderByCreatedAtAsc();
 }

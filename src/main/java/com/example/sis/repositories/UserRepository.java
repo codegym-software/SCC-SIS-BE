@@ -14,6 +14,14 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByKeycloakUserId(String keycloakUserId);
     Optional<User> findByEmail(String email);
 
+    // Find user ID by email (for token lookup)
+    @Query("SELECT u.userId FROM User u WHERE u.email = :email")
+    Optional<Long> findIdByEmail(@Param("email") String email);
+
+    // Find user ID by username (for token lookup fallback)
+    @Query("SELECT u.userId FROM User u WHERE u.email = :username") // Assuming username maps to email
+    Optional<Long> findIdByUsername(@Param("username") String username);
+
     // Java 17 text block OK; nếu IDE kêu, dùng bản ALT ở dưới.
     @Query("""
     SELECT DISTINCT u
