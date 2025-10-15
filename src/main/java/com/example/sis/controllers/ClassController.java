@@ -4,11 +4,9 @@ import com.example.sis.dtos.classes.ClassLiteResponse;
 import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.dtos.classes.CreateClassRequest;
 import com.example.sis.dtos.classes.UpdateClassRequest;
-import com.example.sis.dtos.program.ProgramLiteResponse;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.services.ClassService;
-import com.example.sis.services.ProgramService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,20 +22,19 @@ import java.util.List;
 public class ClassController {
 
     private final ClassService classService;
-    private final ProgramService programService;
     private final UserRoleRepository userRoleRepository;
 
-    public ClassController(ClassService classService, ProgramService programService,
-            UserRoleRepository userRoleRepository) {
+    public ClassController(ClassService classService, UserRoleRepository userRoleRepository) {
         this.classService = classService;
-        this.programService = programService;
         this.userRoleRepository = userRoleRepository;
     }
 
     /**
      * Tạo lớp học mới
-     * Chỉ Super Admin hoặc Academic Staff tại trung tâm đó mới được
-     * tạo
+     * - Super Admin: có thể tạo lớp cho bất kỳ trung tâm nào, centerId lấy từ
+     * request body
+     * - Academic Staff: chỉ tạo lớp cho trung tâm của mình, centerId tự động lấy từ
+     * user hiện tại
      */
     @PostMapping
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
@@ -46,11 +43,22 @@ public class ClassController {
             Authentication authentication) {
         Integer createdBy = getCurrentUserId(authentication);
 
-        // Lấy centerId từ user hiện tại
-        Integer centerId = getCurrentUserCenterId(authentication);
-        if (centerId == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .build(); // User không thuộc trung tâm nào
+        Integer centerId;
+
+        // Nếu là Super Admin, lấy centerId từ request body
+        if (isCurrentUserSuperAdmin(authentication)) {
+            if (request.getCenterId() == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            centerId = request.getCenterId();
+        } else {
+            // Nếu là Academic Staff, tự động lấy centerId từ user hiện tại
+            centerId = getCurrentUserCenterId(authentication);
+            if (centerId == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            // Override centerId từ request body bằng centerId của user
+            request.setCenterId(centerId);
         }
 
         ClassResponse classResponse = classService.createClass(request, centerId, createdBy);
@@ -163,14 +171,6 @@ public class ClassController {
         Integer updatedBy = getCurrentUserId(authentication);
         ClassResponse updatedClass = classService.updateClass(id, request, updatedBy);
         return ResponseEntity.ok(updatedClass);
-    }
-
-    /**
-     * Lấy danh sách chương trình học để tạo lớp
-     */
-    @GetMapping("/programs")
-    public ResponseEntity<List<ProgramLiteResponse>> getActivePrograms() {
-        return ResponseEntity.ok(programService.getAllActivePrograms());
     }
 
     /**

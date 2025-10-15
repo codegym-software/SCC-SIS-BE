@@ -1,10 +1,13 @@
 package com.example.sis.dtos.classes;
 
+import com.example.sis.enums.StudyDay;
+import com.example.sis.enums.StudyTime;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public class UpdateClassRequest {
 
@@ -24,6 +27,12 @@ public class UpdateClassRequest {
 
     @Positive(message = "Sức chứa phải là số dương")
     private Integer capacity;
+
+    // Ngày học trong tuần (tối đa 2 ngày)
+    private List<StudyDay> studyDays;
+
+    // Ca học
+    private StudyTime studyTime;
 
     // Getters and Setters
     public String getName() {
@@ -72,5 +81,21 @@ public class UpdateClassRequest {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public List<StudyDay> getStudyDays() {
+        return studyDays;
+    }
+
+    public void setStudyDays(List<StudyDay> studyDays) {
+        this.studyDays = studyDays;
+    }
+
+    public StudyTime getStudyTime() {
+        return studyTime;
+    }
+
+    public void setStudyTime(StudyTime studyTime) {
+        this.studyTime = studyTime;
     }
 }

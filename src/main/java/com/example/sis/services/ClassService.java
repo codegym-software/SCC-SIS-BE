@@ -75,6 +75,11 @@ public class ClassService {
         classEntity.setRoom(request.getRoom());
         classEntity.setCapacity(request.getCapacity());
         classEntity.setStatus(ClassEntity.ClassStatus.PLANNED);
+
+        // Set study schedule
+        classEntity.setStudyDays(request.getStudyDays());
+        classEntity.setStudyTime(request.getStudyTime());
+
         classEntity.setCreatedAt(LocalDateTime.now());
         classEntity.setUpdatedAt(LocalDateTime.now());
         classEntity.setCreatedBy(creator);
@@ -117,6 +122,11 @@ public class ClassService {
         existingClass.setEndDate(request.getEndDate());
         existingClass.setRoom(request.getRoom());
         existingClass.setCapacity(request.getCapacity());
+
+        // Update study schedule
+        existingClass.setStudyDays(request.getStudyDays());
+        existingClass.setStudyTime(request.getStudyTime());
+
         existingClass.setUpdatedAt(LocalDateTime.now());
         existingClass.setUpdatedBy(updater);
 
@@ -201,6 +211,8 @@ public class ClassService {
         response.setStatus(classEntity.getStatus());
         response.setRoom(classEntity.getRoom());
         response.setCapacity(classEntity.getCapacity());
+        response.setStudyDays(classEntity.getStudyDays());
+        response.setStudyTime(classEntity.getStudyTime());
         response.setCreatedAt(classEntity.getCreatedAt());
         response.setUpdatedAt(classEntity.getUpdatedAt());
         response.setCreatedBy(classEntity.getCreatedBy() != null ? classEntity.getCreatedBy().getUserId() : null);
