@@ -4,11 +4,9 @@ import com.example.sis.dtos.classes.ClassLiteResponse;
 import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.dtos.classes.CreateClassRequest;
 import com.example.sis.dtos.classes.UpdateClassRequest;
-import com.example.sis.dtos.program.ProgramLiteResponse;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.services.ClassService;
-import com.example.sis.services.ProgramService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,13 +22,10 @@ import java.util.List;
 public class ClassController {
 
     private final ClassService classService;
-    private final ProgramService programService;
     private final UserRoleRepository userRoleRepository;
 
-    public ClassController(ClassService classService, ProgramService programService,
-            UserRoleRepository userRoleRepository) {
+    public ClassController(ClassService classService, UserRoleRepository userRoleRepository) {
         this.classService = classService;
-        this.programService = programService;
         this.userRoleRepository = userRoleRepository;
     }
 
@@ -176,14 +171,6 @@ public class ClassController {
         Integer updatedBy = getCurrentUserId(authentication);
         ClassResponse updatedClass = classService.updateClass(id, request, updatedBy);
         return ResponseEntity.ok(updatedClass);
-    }
-
-    /**
-     * Lấy danh sách chương trình học để tạo lớp
-     */
-    @GetMapping("/programs")
-    public ResponseEntity<List<ProgramLiteResponse>> getActivePrograms() {
-        return ResponseEntity.ok(programService.getAllActivePrograms());
     }
 
     /**

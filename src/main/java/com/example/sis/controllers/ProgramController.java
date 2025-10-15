@@ -18,7 +18,17 @@ public class ProgramController {
     }
 
     /**
+     * Lấy danh sách tất cả chương trình học đang hoạt động
+     * Endpoint chính: GET /api/programs
+     */
+    @GetMapping
+    public ResponseEntity<List<ProgramLiteResponse>> getAllActivePrograms() {
+        return ResponseEntity.ok(programService.getAllActivePrograms());
+    }
+
+    /**
      * Lấy danh sách chương trình học đang hoạt động cho dropdown
+     * Endpoint phụ với filter: GET /api/programs/lite?category=...
      */
     @GetMapping("/lite")
     public ResponseEntity<List<ProgramLiteResponse>> getActivePrograms(
