@@ -22,6 +22,13 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Query("SELECT u.userId FROM User u WHERE u.email = :username") // Assuming username maps to email
     Optional<Long> findIdByUsername(@Param("username") String username);
 
+    // Find user ID by Keycloak user ID (sub claim)
+    @Query("SELECT u.userId FROM User u WHERE u.keycloakUserId = :keycloakUserId")
+    Optional<Integer> findIdByKeycloakUserId(@Param("keycloakUserId") String keycloakUserId);
+
+    // Find user by Keycloak user ID (sub claim)
+    Optional<User> findByKeycloakUserId(String keycloakUserId);
+
     // Java 17 text block OK; nếu IDE kêu, dùng bản ALT ở dưới.
     @Query("""
     SELECT DISTINCT u

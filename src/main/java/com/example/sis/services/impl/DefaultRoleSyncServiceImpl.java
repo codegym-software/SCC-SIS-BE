@@ -1,5 +1,6 @@
 package com.example.sis.services.impl;
 
+import com.example.sis.configs.AuthProps;
 import com.example.sis.enums.RoleScope;
 import com.example.sis.exceptions.NotFoundException;
 import com.example.sis.models.Role;
@@ -30,25 +31,29 @@ public class DefaultRoleSyncServiceImpl implements DefaultRoleSyncService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final UserRoleService userRoleService;
+    private final AuthProps authProps;
 
     public DefaultRoleSyncServiceImpl(UserRepository userRepository,
-                                   RoleRepository roleRepository,
-                                   UserRoleRepository userRoleRepository,
-                                   UserRoleService userRoleService) {
+                                    RoleRepository roleRepository,
+                                    UserRoleRepository userRoleRepository,
+                                    UserRoleService userRoleService,
+                                    AuthProps authProps) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.userRoleService = userRoleService;
+        this.authProps = authProps;
     }
 
     /**
      * Ensures that a user has their default role assigned if they don't already have role assignments.
-     * This method is idempotent and follows the business rules:
+     * Policy: user preference > config default
+     * - If !autoAssignEnabled → return early
      * - If user already has role assignments → return
-     * - Get defaultRoleId (+ defaultCenterId) from users table
-     * - role = findActiveById(defaultRoleId).orElse(null) → null thì return
-     * - scope=GLOBAL → assignIfNotExists(userId, roleId, GLOBAL, null)
-     * - scope=CENTER → nếu defaultCenterId!=null → assignIfNotExists(userId, roleId, CENTER, defaultCenterId)
+     * - Get user.defaultRoleId if exists; otherwise use config defaultRoleCode
+     * - If scope=CENTER and user.defaultCenterId==null → use config defaultCenterId if available
+     * - Respect rules & idempotent: GLOBAL ≤1, CENTER ≤3, no duplicates
+     * - Don't throw; only log.warn when missing config/role inactive
      *
      * @param userId The user ID to check and assign default role for
      */
@@ -57,6 +62,12 @@ public class DefaultRoleSyncServiceImpl implements DefaultRoleSyncService {
     public void ensureDefaultRoleAssigned(Long userId) {
         if (userId == null) {
             logger.debug("User ID is null, skipping default role assignment");
+            return;
+        }
+
+        // Điều kiện kích hoạt: nếu không bật auto-assign thì return sớm
+        if (!authProps.isAutoAssignEnabled()) {
+            logger.debug("Auto-assign is disabled, skipping default role assignment for user {}", userId);
             return;
         }
 
@@ -84,18 +95,35 @@ public class DefaultRoleSyncServiceImpl implements DefaultRoleSyncService {
 
             User user = userOpt.get();
 
-            // Check if user has default role configured
-            Integer defaultRoleId = user.getDefaultRoleId();
-            if (defaultRoleId == null) {
-                logger.debug("User {} has no default role configured, skipping assignment", userId);
-                return;
+            // Policy: lấy default role (ưu tiên user > config)
+            Integer roleId = null;
+            if (user.getDefaultRoleId() != null) {
+                // User có cấu hình default role
+                roleId = user.getDefaultRoleId();
+                logger.debug("Using user's default role ID: {} for user {}", roleId, userId);
+            } else {
+                // User không có default role → dùng config defaultRoleCode
+                String defaultRoleCode = authProps.getDefaultRoleCode();
+                if (defaultRoleCode == null || defaultRoleCode.trim().isEmpty()) {
+                    logger.warn("No default role code configured in auth props, skipping assignment for user {}", userId);
+                    return;
+                }
+
+                Optional<Integer> roleIdOpt = roleRepository.findIdByCode(defaultRoleCode);
+                if (roleIdOpt.isEmpty()) {
+                    logger.warn("Default role with code '{}' not found or inactive, skipping assignment for user {}",
+                               defaultRoleCode, userId);
+                    return;
+                }
+
+                roleId = roleIdOpt.get();
+                logger.debug("Using config default role code '{}' (ID: {}) for user {}", defaultRoleCode, roleId, userId);
             }
 
-            // Get the role and validate it's active
-            Optional<Role> roleOpt = roleRepository.findActiveById(defaultRoleId);
+            // Validate role exists and is active
+            Optional<Role> roleOpt = roleRepository.findActiveById(roleId);
             if (roleOpt.isEmpty()) {
-                logger.warn("Default role {} for user {} is not found or inactive, skipping assignment",
-                           defaultRoleId, userId);
+                logger.warn("Role with ID {} is not found or inactive, skipping assignment for user {}", roleId, userId);
                 return;
             }
 
@@ -114,17 +142,24 @@ public class DefaultRoleSyncServiceImpl implements DefaultRoleSyncService {
             // Assign role based on scope
             if (RoleScope.GLOBAL.equals(scope)) {
                 logger.info("Assigning GLOBAL role {} to user {}", role.getName(), userId);
-                userRoleService.assignIfNotExists(userId, defaultRoleId, RoleScope.GLOBAL, null);
+                userRoleService.assignIfNotExists(userId, roleId, RoleScope.GLOBAL, null);
             } else if (RoleScope.CENTER.equals(scope)) {
-                Integer defaultCenterId = user.getDefaultCenterId();
-                if (defaultCenterId != null) {
-                    logger.info("Assigning CENTER role {} with center {} to user {}",
-                               role.getName(), defaultCenterId, userId);
-                    userRoleService.assignIfNotExists(userId, defaultRoleId, RoleScope.CENTER, defaultCenterId);
+                // Nếu user.defaultCenterId==null → dùng config defaultCenterId nếu có
+                Integer centerId = user.getDefaultCenterId();
+                if (centerId == null) {
+                    centerId = authProps.getDefaultCenterId();
+                    if (centerId == null) {
+                        logger.warn("User {} has CENTER role {} but no default center configured (neither user nor config), skipping assignment",
+                                   userId, role.getName());
+                        return;
+                    }
+                    logger.debug("Using config default center ID: {} for user {}", centerId, userId);
                 } else {
-                    logger.warn("User {} has CENTER role {} but no default center configured, skipping assignment",
-                               userId, role.getName());
+                    logger.debug("Using user's default center ID: {} for user {}", centerId, userId);
                 }
+
+                logger.info("Assigning CENTER role {} with center {} to user {}", role.getName(), centerId, userId);
+                userRoleService.assignIfNotExists(userId, roleId, RoleScope.CENTER, centerId);
             }
 
         } catch (Exception ex) {
