@@ -38,8 +38,7 @@ public class User {
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
-    @NotBlank
-    @Column(name = "phone", nullable = false, length = 32)
+    @Column(name = "phone", length = 32)
     private String phone;
 
     // Liên kết với Keycloak
