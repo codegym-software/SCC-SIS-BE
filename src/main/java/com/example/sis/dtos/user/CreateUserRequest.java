@@ -39,6 +39,12 @@ public class CreateUserRequest {
     /** Danh sách role cần gán ngay */
     private List<RoleAssignment> roles;
 
+    /** Default role cho auto-assignment (optional) */
+    private Integer defaultRoleId;
+
+    /** Default center cho auto-assignment (optional, chỉ cần thiết nếu role scope = CENTER) */
+    private Integer defaultCenterId;
+
     // getters/setters
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
@@ -74,6 +80,12 @@ public class CreateUserRequest {
     public void setNote(String note) { this.note = note; }
     public List<RoleAssignment> getRoles() { return roles; }
     public void setRoles(List<RoleAssignment> roles) { this.roles = roles; }
+
+    public Integer getDefaultRoleId() { return defaultRoleId; }
+    public void setDefaultRoleId(Integer defaultRoleId) { this.defaultRoleId = defaultRoleId; }
+
+    public Integer getDefaultCenterId() { return defaultCenterId; }
+    public void setDefaultCenterId(Integer defaultCenterId) { this.defaultCenterId = defaultCenterId; }
 
     public static class RoleAssignment {
         @NotNull

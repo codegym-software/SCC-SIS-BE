@@ -17,7 +17,9 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_users_full_name", columnList = "full_name"),
                 @Index(name = "idx_users_phone", columnList = "phone"),
-                @Index(name = "idx_users_keycloak_id", columnList = "keycloak_user_id")
+                @Index(name = "idx_users_keycloak_id", columnList = "keycloak_user_id"),
+                @Index(name = "idx_users_default_role", columnList = "default_role_id"),
+                @Index(name = "idx_users_default_center", columnList = "default_center_id")
         })
 public class User {
 
@@ -44,6 +46,13 @@ public class User {
     @NotBlank
     @Column(name = "keycloak_user_id", nullable = false, length = 64)
     private String keycloakUserId;
+
+    // Default role và center cho auto-assignment
+    @Column(name = "default_role_id")
+    private Integer defaultRoleId;
+
+    @Column(name = "default_center_id")
+    private Integer defaultCenterId;
 
     // Thông tin bổ sung
     @Column(name = "dob")
@@ -117,6 +126,12 @@ public class User {
 
     public String getKeycloakUserId() { return keycloakUserId; }
     public void setKeycloakUserId(String keycloakUserId) { this.keycloakUserId = keycloakUserId; }
+
+    public Integer getDefaultRoleId() { return defaultRoleId; }
+    public void setDefaultRoleId(Integer defaultRoleId) { this.defaultRoleId = defaultRoleId; }
+
+    public Integer getDefaultCenterId() { return defaultCenterId; }
+    public void setDefaultCenterId(Integer defaultCenterId) { this.defaultCenterId = defaultCenterId; }
 
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }

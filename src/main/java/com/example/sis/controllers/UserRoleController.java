@@ -2,6 +2,7 @@ package com.example.sis.controllers;
 
 import com.example.sis.dtos.userrole.UserRoleRequest;
 import com.example.sis.dtos.userrole.UserRoleResponse;
+import com.example.sis.dtos.userrole.UserRoleAssignmentSummaryResponse;
 import com.example.sis.services.UserRoleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -42,12 +43,13 @@ public class UserRoleController {
     }
 
     /**
-     * Assign MANY roles for a single user.
+     * Assign MANY roles for a single user with summary response.
      * Path userId is applied to all items.
+     * Returns summary with createdCount, skippedCount, errors.
      */
     @PostMapping("/user/{userId}")
     @PreAuthorize("@authz.canAssignUserRoles(authentication, #items)")
-    public ResponseEntity<List<UserRoleResponse>> assignRolesToUser(
+    public ResponseEntity<UserRoleAssignmentSummaryResponse> assignRolesToUserWithSummary(
             @PathVariable Integer userId,
             @P("items") @RequestBody List<UserRoleRequest> requests,
             @AuthenticationPrincipal Jwt jwt
@@ -57,8 +59,9 @@ public class UserRoleController {
                 if (r != null) r.setUserId(userId);
             }
         }
-        List<UserRoleResponse> res = userRoleService.assignRolesToUser(userId, requests, jwt.getSubject());
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        UserRoleAssignmentSummaryResponse summary = userRoleService.assignRolesToUserWithSummary(userId, requests, jwt.getSubject());
+        HttpStatus status = (summary.getCreatedCount() > 0) ? HttpStatus.CREATED : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(summary);
     }
 
     /** Revoke ONE (soft). */

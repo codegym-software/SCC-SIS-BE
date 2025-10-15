@@ -1,5 +1,6 @@
 package com.example.sis.configs;
 
+import com.example.sis.configs.DefaultRoleAutoAssignFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -45,6 +47,7 @@ public class SecurityConfig {
                                                                                                                 // trong
                                                                                                                 // service
                                                 .requestMatchers(HttpMethod.GET, "/api/user-views").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/user-views/**").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/user-stats/**").authenticated()
 
                                                 // Roles
@@ -103,6 +106,11 @@ public class SecurityConfig {
                                                 .authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers/*")
                                                 .authenticated()
+
+                                                // User-Role assignments
+                                                .requestMatchers(HttpMethod.GET, "/api/user-roles/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/user-roles/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/user-roles/**").authenticated()
 
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak

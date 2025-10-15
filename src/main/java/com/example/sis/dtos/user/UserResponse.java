@@ -10,6 +10,8 @@ public class UserResponse {
     private String email;
     private String phone;
     private String keycloakUserId;
+    private Integer defaultRoleId;
+    private Integer defaultCenterId;
     private LocalDate dob;
     private String gender;
     private boolean active;
@@ -30,6 +32,12 @@ public class UserResponse {
 
     public String getKeycloakUserId() { return keycloakUserId; }
     public void setKeycloakUserId(String keycloakUserId) { this.keycloakUserId = keycloakUserId; }
+
+    public Integer getDefaultRoleId() { return defaultRoleId; }
+    public void setDefaultRoleId(Integer defaultRoleId) { this.defaultRoleId = defaultRoleId; }
+
+    public Integer getDefaultCenterId() { return defaultCenterId; }
+    public void setDefaultCenterId(Integer defaultCenterId) { this.defaultCenterId = defaultCenterId; }
 
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }
