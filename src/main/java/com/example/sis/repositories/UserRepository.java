@@ -40,6 +40,32 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 """)
     List<User> findUsersByCenterId(@Param("centerId") Integer centerId);
 
+    /**
+     * Tìm giảng viên available để phân công cho lớp
+     * (thuộc center, có role LECTURER, chưa có assignment active trong lớp)
+     */
+    @Query("""
+    SELECT DISTINCT u
+    FROM User u
+    JOIN UserRole ur ON ur.user = u
+    JOIN Role r ON ur.role = r
+    WHERE u.deletedAt IS NULL
+      AND ur.center.centerId = :centerId
+      AND r.code = 'LECTURER'
+      AND ur.revokedAt IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM ClassTeacher ct
+        WHERE ct.classEntity.classId = :classId
+          AND ct.teacher.userId = u.userId
+          AND ct.endDate IS NULL
+      )
+      AND (:q IS NULL OR lower(u.fullName) LIKE lower(concat('%', :q, '%')) OR lower(u.email) LIKE lower(concat('%', :q, '%')))
+    ORDER BY u.fullName ASC
+""")
+    List<User> findAvailableLecturersByCenterAndClass(@Param("centerId") Integer centerId,
+                                                      @Param("classId") Integer classId,
+                                                      @Param("q") String searchQuery);
+
 
     // ALT (nếu text block """ bị lỗi, dùng chuỗi thường):
     // @Query("SELECT DISTINCT u FROM User u LEFT JOIN UserRole ur ON ur.user = u " +

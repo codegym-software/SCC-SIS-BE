@@ -40,6 +40,9 @@ public class ClassTeacher {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    @Column(name = "eff_end_date", insertable = false, updatable = false)
+    private LocalDate effEndDate;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -78,6 +81,9 @@ public class ClassTeacher {
 
     public LocalDate getEndDate() { return endDate; }
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
+    public LocalDate getEffEndDate() { return effEndDate; }
+    public void setEffEndDate(LocalDate effEndDate) { this.effEndDate = effEndDate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

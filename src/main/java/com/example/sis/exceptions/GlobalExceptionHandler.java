@@ -39,6 +39,26 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(LecturerAlreadyAssignedException.class)
+    public ResponseEntity<ApiError> handleLecturerAlreadyAssigned(LecturerAlreadyAssignedException ex, WebRequest req) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ClassMaxActiveLecturersExceededException.class)
+    public ResponseEntity<ApiError> handleClassMaxActiveLecturersExceeded(ClassMaxActiveLecturersExceededException ex, WebRequest req) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(AssignmentNotFoundException.class)
+    public ResponseEntity<ApiError> handleAssignmentNotFound(AssignmentNotFoundException ex, WebRequest req) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, WebRequest req) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
     // Xử lý AuthenticationException và AccessDeniedException (403)
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, WebRequest req) {
