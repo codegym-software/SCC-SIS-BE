@@ -45,7 +45,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ClassMaxActiveLecturersExceededException.class)
-    public ResponseEntity<ApiError> handleClassMaxActiveLecturersExceeded(ClassMaxActiveLecturersExceededException ex, WebRequest req) {
+    public ResponseEntity<ApiError> handleClassMaxActiveLecturersExceeded(ClassMaxActiveLecturersExceededException ex,
+            WebRequest req) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req);
     }
 
@@ -60,25 +61,25 @@ public class GlobalExceptionHandler {
     }
 
     // Xử lý AuthenticationException và AccessDeniedException (403)
-    @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
+    @ExceptionHandler({ AuthenticationException.class, AccessDeniedException.class })
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, WebRequest req) {
         return build(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện hành động này.", req);
     }
 
     // Xử lý UnexpectedRollbackException và TransactionSystemException (409)
-    @ExceptionHandler({UnexpectedRollbackException.class, TransactionSystemException.class})
+    @ExceptionHandler({ UnexpectedRollbackException.class, TransactionSystemException.class })
     public ResponseEntity<ApiError> handleTransaction(Exception ex, WebRequest req) {
         return build(HttpStatus.CONFLICT, "Không thể hoàn tất do vi phạm ràng buộc dữ liệu. Vui lòng thử lại.", req);
     }
 
     // Xử lý DataIntegrityViolationException và ConstraintViolationException (400)
-    @ExceptionHandler({DataIntegrityViolationException.class, ConstraintViolationException.class})
+    @ExceptionHandler({ DataIntegrityViolationException.class, ConstraintViolationException.class })
     public ResponseEntity<ApiError> handleDataIntegrity(Exception ex, WebRequest req) {
         return build(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ hoặc vi phạm ràng buộc.", req);
     }
 
     // Xử lý MethodArgumentNotValidException với thông báo tiếng Việt
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    @ExceptionHandler({ MethodArgumentNotValidException.class, BindException.class })
     public ResponseEntity<ApiError> handleValidation(Exception ex, WebRequest req) {
         String message = "Dữ liệu không hợp lệ.";
 
@@ -98,8 +99,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, req);
     }
 
+    // Xử lý RuntimeException với message cụ thể (ví dụ: validation errors)
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiError> handleRuntimeException(RuntimeException ex, WebRequest req) {
+        // Log để debug
+        System.err.println("RuntimeException: " + ex.getMessage());
+        ex.printStackTrace();
+
+        // Trả về message cụ thể từ RuntimeException
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleOther(Exception ex, WebRequest req) {
+        // Log để debug
+        System.err.println("Exception: " + ex.getMessage());
+        ex.printStackTrace();
+
         // Không trả về thông tin kỹ thuật cho client
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.", req);
     }
