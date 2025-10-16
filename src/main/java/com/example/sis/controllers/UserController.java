@@ -36,11 +36,11 @@ public class UserController {
     private final ProvisioningService provisioningService;
 
     public UserController(UserService userService,
-                         UserLookupService userLookupService,
-                         DefaultRoleSyncService defaultRoleSyncService,
-                         UserRepository userRepository,
-                         UserRoleRepository userRoleRepository,
-                         ProvisioningService provisioningService) {
+            UserLookupService userLookupService,
+            DefaultRoleSyncService defaultRoleSyncService,
+            UserRepository userRepository,
+            UserRoleRepository userRoleRepository,
+            ProvisioningService provisioningService) {
         this.userService = userService;
         this.userLookupService = userLookupService;
         this.defaultRoleSyncService = defaultRoleSyncService;
@@ -65,7 +65,8 @@ public class UserController {
         return ResponseEntity.ok(userService.getUsers(centerId));
     }
 
-    // API GET /api/profile - trả về thông tin user hiện tại và danh sách role active
+    // API GET /api/profile - trả về thông tin user hiện tại và danh sách role
+    // active
     @GetMapping("/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponse> getProfile(Authentication authentication) {
@@ -74,7 +75,7 @@ public class UserController {
 
         // 2. Nếu không tìm thấy user hiện có, thử tạo user mới từ JWT token
         Integer userId = (userIdLong != null) ? userIdLong.intValue()
-            : provisioningService.ensureUserExists(authentication);
+                : provisioningService.ensureUserExists(authentication);
 
         if (userId == null) {
             return ResponseEntity.status(401).build();
@@ -95,20 +96,36 @@ public class UserController {
         // 6. Lấy danh sách roles active của user
         List<UserRole> activeRoles = userRoleRepository.findActiveByUserId(userId);
         List<UserProfileResponse.RoleInfo> roleInfos = activeRoles.stream()
-            .map(userRole -> {
-                String scope = userRole.getCenter() == null ? "GLOBAL" : "CENTER";
-                return new UserProfileResponse.RoleInfo(userRole.getRole().getCode(), scope);
-            })
-            .collect(Collectors.toList());
+                .map(userRole -> {
+                    String scope = userRole.getCenter() == null ? "GLOBAL" : "CENTER";
+                    return new UserProfileResponse.RoleInfo(userRole.getRole().getCode(), scope);
+                })
+                .collect(Collectors.toList());
 
-        // 7. Tạo response
+        // 7. Lấy centerId và centerName nếu user có CENTER scope
+        Integer centerId = null;
+        String centerName = null;
+
+        // Tìm role đầu tiên có CENTER scope (không phải GLOBAL)
+        UserRole centerRole = activeRoles.stream()
+                .filter(userRole -> userRole.getCenter() != null)
+                .findFirst()
+                .orElse(null);
+
+        if (centerRole != null) {
+            centerId = centerRole.getCenter().getCenterId();
+            centerName = centerRole.getCenter().getName();
+        }
+
+        // 8. Tạo response
         UserProfileResponse response = new UserProfileResponse(
-            user.getUserId(),
-            user.getFullName(),
-            user.getEmail(),
-            keycloakInfo,
-            roleInfos
-        );
+                user.getUserId(),
+                user.getFullName(),
+                user.getEmail(),
+                keycloakInfo,
+                roleInfos,
+                centerId,
+                centerName);
 
         return ResponseEntity.ok(response);
     }
