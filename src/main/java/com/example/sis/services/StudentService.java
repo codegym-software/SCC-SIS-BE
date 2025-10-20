@@ -51,4 +51,8 @@ public interface StudentService {
      * createdByUserId is used to set audit fields for created records.
      */
     List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException;
+    /**
+     * Cập nhật trạng thái học viên
+     */
+    StudentResponse updateStudentStatus(Integer studentId, String status, Integer updatedByUserId);
 }
