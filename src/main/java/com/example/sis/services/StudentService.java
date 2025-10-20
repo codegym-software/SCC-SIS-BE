@@ -40,4 +40,9 @@ public interface StudentService {
      * Tìm kiếm học viên theo tên hoặc email
      */
     List<StudentResponse> searchStudents(String keyword);
+
+    /**
+     * Cập nhật trạng thái học viên
+     */
+    StudentResponse updateStudentStatus(Integer studentId, String status, Integer updatedByUserId);
 }
