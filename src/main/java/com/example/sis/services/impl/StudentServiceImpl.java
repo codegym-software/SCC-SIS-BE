@@ -14,9 +14,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CreationHelper;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -88,6 +105,224 @@ public class StudentServiceImpl implements StudentService {
         return studentRepo.findAllActiveStudents().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportStudentsToExcel() throws IOException {
+        List<Student> students = studentRepo.findAllActiveStudents();
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Students");
+
+            // Header
+            Row header = sheet.createRow(0);
+            String[] columns = new String[] {
+                    "Student ID",
+                    "Full name",
+                    "Email",
+                    "Phone",
+                    "DOB",
+                    "Gender",
+                    "National ID",
+                    "Address",
+                    "Province",
+                    "District",
+                    "Ward",
+                    "Note",
+                    "Status",
+                    "Created At",
+                    "Updated At"
+            };
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(columns[i]);
+                CellStyle style = workbook.createCellStyle();
+                Font font = workbook.createFont();
+                font.setBold(true);
+                style.setFont(font);
+                cell.setCellStyle(style);
+                sheet.autoSizeColumn(i);
+            }
+
+            // Date cell style
+            CreationHelper creationHelper = workbook.getCreationHelper();
+            CellStyle dateStyle = workbook.createCellStyle();
+            short df = creationHelper.createDataFormat().getFormat("yyyy-mm-dd");
+            dateStyle.setDataFormat(df);
+
+            int rowIdx = 1;
+            for (Student s : students) {
+                Row row = sheet.createRow(rowIdx++);
+
+                int c = 0;
+                row.createCell(c++).setCellValue(s.getStudentId() != null ? s.getStudentId() : 0);
+                row.createCell(c++).setCellValue(s.getFullName() != null ? s.getFullName() : "");
+                row.createCell(c++).setCellValue(s.getEmail() != null ? s.getEmail() : "");
+                row.createCell(c++).setCellValue(s.getPhone() != null ? s.getPhone() : "");
+
+                Cell dobCell = row.createCell(c++);
+                if (s.getDob() != null) {
+                    dobCell.setCellValue(java.util.Date.from(s.getDob().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                    dobCell.setCellStyle(dateStyle);
+                } else {
+                    dobCell.setCellValue("");
+                }
+
+                row.createCell(c++).setCellValue(s.getGender() != null ? s.getGender().name() : "");
+                row.createCell(c++).setCellValue(s.getNationalIdNo() != null ? s.getNationalIdNo() : "");
+                row.createCell(c++).setCellValue(s.getAddressLine() != null ? s.getAddressLine() : "");
+                row.createCell(c++).setCellValue(s.getProvince() != null ? s.getProvince() : "");
+                row.createCell(c++).setCellValue(s.getDistrict() != null ? s.getDistrict() : "");
+                row.createCell(c++).setCellValue(s.getWard() != null ? s.getWard() : "");
+                row.createCell(c++).setCellValue(s.getNote() != null ? s.getNote() : "");
+                row.createCell(c++).setCellValue(s.getOverallStatus() != null ? s.getOverallStatus().name() : "");
+                
+                Cell createdAt = row.createCell(c++);
+                if (s.getCreatedAt() != null) {
+                    createdAt.setCellValue(java.util.Date.from(s.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()));
+                    createdAt.setCellStyle(dateStyle);
+                } else {
+                    createdAt.setCellValue("");
+                }
+
+                Cell updatedAt = row.createCell(c++);
+                if (s.getUpdatedAt() != null) {
+                    updatedAt.setCellValue(java.util.Date.from(s.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant()));
+                    updatedAt.setCellStyle(dateStyle);
+                } else {
+                    updatedAt.setCellValue("");
+                }
+            }
+
+            // Autosize columns (optional)
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Override
+    @Transactional
+    public List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException {
+        List<StudentResponse> created = new ArrayList<>();
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                return created;
+            }
+
+            // Assume first row is header. Start from rowIndex = 1
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                try {
+                    // Read cells by column index consistent with export header
+                    int c = 0;
+                    // Skip Student ID col (col 0)
+                    Cell skipId = row.getCell(c++);
+
+                    String fullName = getStringCell(row.getCell(c++));
+                    String email = getStringCell(row.getCell(c++));
+                    String phone = getStringCell(row.getCell(c++));
+                    LocalDate dob = getDateCell(row.getCell(c++));
+                    String gender = getStringCell(row.getCell(c++));
+                    String nationalId = getStringCell(row.getCell(c++));
+                    String address = getStringCell(row.getCell(c++));
+                    String province = getStringCell(row.getCell(c++));
+                    String district = getStringCell(row.getCell(c++));
+                    String ward = getStringCell(row.getCell(c++));
+                    String note = getStringCell(row.getCell(c++));
+                    // skip status, createdAt, updatedAt columns if present
+
+                    // Minimal validation
+                    if (email == null || email.isBlank()) {
+                        // skip rows without email
+                        continue;
+                    }
+                    if (fullName == null || fullName.isBlank()) {
+                        // skip rows without name
+                        continue;
+                    }
+
+                    // Create request DTO
+                    com.example.sis.dtos.student.CreateStudentRequest req = new com.example.sis.dtos.student.CreateStudentRequest();
+                    req.setFullName(fullName);
+                    req.setEmail(email);
+                    req.setPhone(phone);
+                    req.setDob(dob);
+                    req.setGender(gender);
+                    req.setNationalIdNo(nationalId);
+                    req.setAddressLine(address);
+                    req.setProvince(province);
+                    req.setDistrict(district);
+                    req.setWard(ward);
+                    req.setNote(note);
+
+                    try {
+                        // Reuse existing createStudent (it will validate duplicates)
+                        StudentResponse resp = createStudent(req, createdByUserId);
+                        created.add(resp);
+                    } catch (IllegalArgumentException ex) {
+                        // Skip duplicate or invalid row; could collect errors if needed
+                        log.warn("Skipping row {} due to validation error: {}", r + 1, ex.getMessage());
+                    }
+                } catch (Exception rowEx) {
+                    log.warn("Failed to parse row {}, skipping. Error: {}", r + 1, rowEx.getMessage());
+                }
+            }
+        }
+
+        return created;
+    }
+
+    // Helper: read string cell safely
+    private String getStringCell(Cell cell) {
+        if (cell == null) return null;
+        CellType type = cell.getCellType();
+        switch (type) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return String.valueOf(cell.getLocalDateTimeCellValue().toLocalDate());
+                } else {
+                    double d = cell.getNumericCellValue();
+                    String s = String.valueOf(d);
+                    if (s.endsWith(".0")) s = s.substring(0, s.length() - 2);
+                    return s;
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return null;
+        }
+    }
+
+    // Helper: parse date cell into LocalDate
+    private LocalDate getDateCell(Cell cell) {
+        if (cell == null) return null;
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+            java.util.Date d = cell.getDateCellValue();
+            return d.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+        String s = getStringCell(cell);
+        if (s == null || s.isBlank()) return null;
+        try {
+            return LocalDate.parse(s);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
