@@ -2,6 +2,7 @@ package com.example.sis.dtos.classes;
 
 import com.example.sis.enums.StudyDay;
 import com.example.sis.enums.StudyTime;
+import com.example.sis.models.ClassEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -33,6 +34,9 @@ public class UpdateClassRequest {
 
     // Ca học
     private StudyTime studyTime;
+
+    // Trạng thái lớp học
+    private ClassEntity.ClassStatus status;
 
     // Getters and Setters
     public String getName() {
@@ -97,5 +101,13 @@ public class UpdateClassRequest {
 
     public void setStudyTime(StudyTime studyTime) {
         this.studyTime = studyTime;
+    }
+
+    public ClassEntity.ClassStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ClassEntity.ClassStatus status) {
+        this.status = status;
     }
 }
