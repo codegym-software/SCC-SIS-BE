@@ -13,6 +13,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 
@@ -66,6 +72,30 @@ public class StudentController {
     public ResponseEntity<List<StudentResponse>> getAllStudents() {
         List<StudentResponse> students = studentService.getAllStudents();
         return ResponseEntity.ok(students);
+    }
+
+    /**
+     * Export students to Excel (.xlsx)
+     */
+    @GetMapping("/export")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<byte[]> exportStudents() {
+        try {
+            byte[] data = studentService.exportStudentsToExcel();
+
+            String filename = "students.xlsx";
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(data);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**
@@ -139,6 +169,16 @@ public class StudentController {
     }
 
     /**
+     * Import students from uploaded Excel (.xlsx) file
+     */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<List<StudentResponse>> importStudents(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+
+        Integer createdByUserId = getCurrentUserId(authentication);
+        if (createdByUserId == null) {
      * Cập nhật trạng thái học viên
      * - Super Admin: có thể cập nhật
      * - Academic Staff: có thể cập nhật
@@ -156,6 +196,12 @@ public class StudentController {
         }
 
         try {
+            List<StudentResponse> created = studentService.importStudentsFromExcel(file, createdByUserId);
+            return ResponseEntity.ok(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             StudentResponse response = studentService.updateStudentStatus(id, request.getStatus(), updatedByUserId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {

@@ -5,6 +5,8 @@ import com.example.sis.dtos.student.StudentResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 /**
  * Service quản lý hồ sơ học viên
@@ -41,6 +43,14 @@ public interface StudentService {
      */
     List<StudentResponse> searchStudents(String keyword);
 
+    /** Export all students to an Excel (.xlsx) file as bytes */
+    byte[] exportStudentsToExcel() throws IOException;
+
+    /**
+     * Import students from uploaded Excel file. Returns list of created/parsed StudentResponse.
+     * createdByUserId is used to set audit fields for created records.
+     */
+    List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException;
     /**
      * Cập nhật trạng thái học viên
      */
