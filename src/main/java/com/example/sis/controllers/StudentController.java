@@ -179,6 +179,20 @@ public class StudentController {
 
         Integer createdByUserId = getCurrentUserId(authentication);
         if (createdByUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            List<StudentResponse> created = studentService.importStudentsFromExcel(file, createdByUserId);
+            return ResponseEntity.ok(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Cập nhật trạng thái học viên
      * - Super Admin: có thể cập nhật
      * - Academic Staff: có thể cập nhật
@@ -196,12 +210,6 @@ public class StudentController {
         }
 
         try {
-            List<StudentResponse> created = studentService.importStudentsFromExcel(file, createdByUserId);
-            return ResponseEntity.ok(created);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             StudentResponse response = studentService.updateStudentStatus(id, request.getStatus(), updatedByUserId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
