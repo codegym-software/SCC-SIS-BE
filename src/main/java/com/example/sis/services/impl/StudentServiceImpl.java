@@ -387,12 +387,49 @@ public class StudentServiceImpl implements StudentService {
             throw new IllegalArgumentException("Học viên đã bị xóa trước đó");
         }
 
-        // 3. Set deletedAt = hiện tại
+        // 3. Set deletedAt = hiện tại VÀ đổi trạng thái sang INACTIVE
         student.setDeletedAt(java.time.LocalDateTime.now());
+        student.setOverallStatus(OverallStatus.INACTIVE);
 
         // 4. Lưu vào database
         studentRepo.save(student);
-        log.info("✅ Đã xóa mềm học viên - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+        log.info("✅ Đã xóa mềm học viên (status -> INACTIVE) - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+    }
+
+    @Override
+    @Transactional
+    public StudentResponse updateStudentStatus(Integer studentId, String status, Integer updatedByUserId) {
+        log.info("🔄 Cập nhật trạng thái học viên ID: {} -> {}", studentId, status);
+
+        // 1. Tìm học viên
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy học viên với ID: " + studentId));
+
+        // 2. Validate và parse status
+        OverallStatus newStatus;
+        try {
+            newStatus = OverallStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận: ACTIVE, INACTIVE, GRADUATED, SUSPENDED");
+        }
+
+        // 3. Cập nhật trạng thái
+        student.setOverallStatus(newStatus);
+
+        // 4. Set audit field
+        if (updatedByUserId != null) {
+            User updatedByUser = userRepo.findById(updatedByUserId).orElse(null);
+            if (updatedByUser != null) {
+                student.setUpdatedBy(updatedByUser);
+            }
+        }
+
+        // 5. Lưu vào database
+        student = studentRepo.save(student);
+        log.info("✅ Đã cập nhật trạng thái học viên - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+
+        // 6. Trả về response
+        return toResponse(student);
     }
 
     @Override

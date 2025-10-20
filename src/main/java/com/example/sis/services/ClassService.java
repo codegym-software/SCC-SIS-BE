@@ -151,6 +151,11 @@ public class ClassService {
         existingClass.setStudyDays(request.getStudyDays());
         existingClass.setStudyTime(request.getStudyTime());
 
+        // Update status if provided
+        if (request.getStatus() != null) {
+            existingClass.setStatus(request.getStatus());
+        }
+
         existingClass.setUpdatedAt(LocalDateTime.now());
         existingClass.setUpdatedBy(updater);
 

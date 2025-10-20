@@ -3,6 +3,7 @@ package com.example.sis.controllers;
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
+import com.example.sis.dtos.student.UpdateStudentStatusRequest;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.services.StudentService;
 import jakarta.validation.Valid;
@@ -178,6 +179,19 @@ public class StudentController {
 
         Integer createdByUserId = getCurrentUserId(authentication);
         if (createdByUserId == null) {
+     * Cập nhật trạng thái học viên
+     * - Super Admin: có thể cập nhật
+     * - Academic Staff: có thể cập nhật
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<StudentResponse> updateStudentStatus(
+            @PathVariable Integer id,
+            @Valid @RequestBody UpdateStudentStatusRequest request,
+            Authentication authentication) {
+
+        Integer updatedByUserId = getCurrentUserId(authentication);
+        if (updatedByUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -188,6 +202,10 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            StudentResponse response = studentService.updateStudentStatus(id, request.getStatus(), updatedByUserId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
