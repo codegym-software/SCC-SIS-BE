@@ -59,6 +59,7 @@ public class ClassJournalServiceImpl implements ClassJournalService {
         journal.setTitle(request.getTitle());
         journal.setContent(request.getContent());
         journal.setJournalDate(request.getJournalDate());
+        journal.setJournalTime(request.getJournalTime());
         
         // Parse journal type (mặc định là OTHER nếu không có hoặc invalid)
         try {
@@ -84,16 +85,15 @@ public class ClassJournalServiceImpl implements ClassJournalService {
     }
 
     @Override
-    public JournalResponse updateJournal(Integer journalId, UpdateJournalRequest request, Integer updatedByUserId) {
-        log.info("Updating journal {} by user {}", journalId, updatedByUserId);
+    public JournalResponse updateJournal(Integer journalId, UpdateJournalRequest request, Integer updatedByUserId, boolean isSuperAdmin) {
+        log.info("Updating journal {} by user {} (isSuperAdmin: {})", journalId, updatedByUserId, isSuperAdmin);
 
         // Tìm nhật ký
         ClassJournal journal = classJournalRepository.findByIdNotDeleted(journalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhật ký"));
 
-        // Kiểm tra quyền: chỉ chủ sở hữu mới được cập nhật
-        // (SUPER_ADMIN sẽ được xử lý ở controller layer qua @authz)
-        if (!journal.getTeacher().getUserId().equals(updatedByUserId)) {
+        // Kiểm tra quyền: chỉ chủ sở hữu hoặc SUPER_ADMIN mới được cập nhật
+        if (!isSuperAdmin && !journal.getTeacher().getUserId().equals(updatedByUserId)) {
             throw new BadRequestException("Bạn không có quyền cập nhật nhật ký này");
         }
 
@@ -110,6 +110,9 @@ public class ClassJournalServiceImpl implements ClassJournalService {
         }
         if (request.getJournalDate() != null) {
             journal.setJournalDate(request.getJournalDate());
+        }
+        if (request.getJournalTime() != null) {
+            journal.setJournalTime(request.getJournalTime());
         }
         if (request.getJournalType() != null && !request.getJournalType().isBlank()) {
             try {
@@ -128,15 +131,15 @@ public class ClassJournalServiceImpl implements ClassJournalService {
     }
 
     @Override
-    public void softDeleteJournal(Integer journalId, Integer deletedByUserId) {
-        log.info("Soft deleting journal {} by user {}", journalId, deletedByUserId);
+    public void softDeleteJournal(Integer journalId, Integer deletedByUserId, boolean isSuperAdmin) {
+        log.info("Soft deleting journal {} by user {} (isSuperAdmin: {})", journalId, deletedByUserId, isSuperAdmin);
 
         // Tìm nhật ký
         ClassJournal journal = classJournalRepository.findByIdNotDeleted(journalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhật ký"));
 
-        // Kiểm tra quyền: chỉ chủ sở hữu mới được xóa
-        if (!journal.getTeacher().getUserId().equals(deletedByUserId)) {
+        // Kiểm tra quyền: chỉ chủ sở hữu hoặc SUPER_ADMIN mới được xóa
+        if (!isSuperAdmin && !journal.getTeacher().getUserId().equals(deletedByUserId)) {
             throw new BadRequestException("Bạn không có quyền xóa nhật ký này");
         }
 
@@ -228,6 +231,7 @@ public class ClassJournalServiceImpl implements ClassJournalService {
         response.setTitle(journal.getTitle());
         response.setContent(journal.getContent());
         response.setJournalDate(journal.getJournalDate());
+        response.setJournalTime(journal.getJournalTime());
         response.setJournalType(journal.getJournalType().name());
         response.setCreatedAt(journal.getCreatedAt());
         response.setUpdatedAt(journal.getUpdatedAt());

@@ -1,7 +1,10 @@
 package com.example.sis.dtos.journal;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * DTO response cho nhật ký lớp học
@@ -15,7 +18,13 @@ public class JournalResponse {
     private String teacherName; // Tên giảng viên
     private String title;
     private String content;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate journalDate;
+    
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime journalTime;
+    
     private String journalType;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -84,6 +93,14 @@ public class JournalResponse {
 
     public void setJournalDate(LocalDate journalDate) {
         this.journalDate = journalDate;
+    }
+
+    public LocalTime getJournalTime() {
+        return journalTime;
+    }
+
+    public void setJournalTime(LocalTime journalTime) {
+        this.journalTime = journalTime;
     }
 
     public String getJournalType() {

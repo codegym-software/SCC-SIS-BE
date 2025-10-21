@@ -38,13 +38,14 @@ public class ClassJournalController {
      */
     @PostMapping
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TEACHER') or @authz.hasRole(authentication, 'LECTURER')")
-    public ResponseEntity<JournalResponse> createJournal(
+    public ResponseEntity<?> createJournal(
             @Valid @RequestBody CreateJournalRequest request,
             Authentication authentication) {
 
         Integer userId = getCurrentUserId(authentication);
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("error", "Unauthorized", "message", "User not authenticated"));
         }
 
         try {
@@ -54,13 +55,15 @@ public class ClassJournalController {
             // Log chi tiết lỗi validation
             System.err.println("❌ BAD_REQUEST: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(java.util.Map.of("error", "Bad Request", "message", e.getMessage()));
         } catch (Exception e) {
             // Log chi tiết lỗi trigger hoặc lỗi khác
             System.err.println("❌ FORBIDDEN/ERROR: " + e.getMessage());
             e.printStackTrace();
             // Database trigger có thể throw exception nếu teacher không được phân vào lớp
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("error", "Forbidden", "message", e.getMessage()));
         }
     }
 
@@ -70,24 +73,31 @@ public class ClassJournalController {
      */
     @PutMapping("/{journalId}")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TEACHER') or @authz.hasRole(authentication, 'LECTURER')")
-    public ResponseEntity<JournalResponse> updateJournal(
+    public ResponseEntity<?> updateJournal(
             @PathVariable Integer journalId,
             @Valid @RequestBody UpdateJournalRequest request,
             Authentication authentication) {
 
         Integer userId = getCurrentUserId(authentication);
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("error", "Unauthorized", "message", "User not authenticated"));
         }
 
+        // Check if user is SUPER_ADMIN
+        String keycloakUserId = getKeycloakUserId(authentication);
+        boolean isSuperAdmin = keycloakUserId != null && 
+                userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(keycloakUserId, "SUPER_ADMIN");
+
         try {
-            // Service sẽ kiểm tra ownership, Super Admin bypass ở controller level
-            JournalResponse response = journalService.updateJournal(journalId, request, userId);
+            JournalResponse response = journalService.updateJournal(journalId, request, userId, isSuperAdmin);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(java.util.Map.of("error", "Bad Request", "message", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("error", "Forbidden", "message", e.getMessage()));
         }
     }
 
@@ -97,20 +107,27 @@ public class ClassJournalController {
      */
     @DeleteMapping("/{journalId}")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TEACHER') or @authz.hasRole(authentication, 'LECTURER')")
-    public ResponseEntity<Void> deleteJournal(
+    public ResponseEntity<?> deleteJournal(
             @PathVariable Integer journalId,
             Authentication authentication) {
 
         Integer userId = getCurrentUserId(authentication);
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("error", "Unauthorized", "message", "User not authenticated"));
         }
 
+        // Check if user is SUPER_ADMIN
+        String keycloakUserId = getKeycloakUserId(authentication);
+        boolean isSuperAdmin = keycloakUserId != null && 
+                userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(keycloakUserId, "SUPER_ADMIN");
+
         try {
-            journalService.softDeleteJournal(journalId, userId);
+            journalService.softDeleteJournal(journalId, userId, isSuperAdmin);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("error", "Forbidden", "message", e.getMessage()));
         }
     }
 
@@ -162,6 +179,16 @@ public class ClassJournalController {
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
             String keycloakUserId = jwt.getSubject();
             return userRoleRepository.findUserIdByKeycloakUserId(keycloakUserId);
+        }
+        return null;
+    }
+
+    /**
+     * Helper method để lấy keycloakUserId từ JWT token
+     */
+    private String getKeycloakUserId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getSubject();
         }
         return null;
     }

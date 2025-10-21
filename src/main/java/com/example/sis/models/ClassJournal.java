@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * Entity cho bảng class_journals (Nhật ký lớp học)
@@ -58,6 +59,9 @@ public class ClassJournal {
     @NotNull
     @Column(name = "journal_date", nullable = false)
     private LocalDate journalDate;
+
+    @Column(name = "journal_time")
+    private LocalTime journalTime;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -144,6 +148,14 @@ public class ClassJournal {
 
     public void setJournalDate(LocalDate journalDate) {
         this.journalDate = journalDate;
+    }
+
+    public LocalTime getJournalTime() {
+        return journalTime;
+    }
+
+    public void setJournalTime(LocalTime journalTime) {
+        this.journalTime = journalTime;
     }
 
     public JournalType getJournalType() {

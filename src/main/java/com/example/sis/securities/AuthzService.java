@@ -58,6 +58,17 @@ public class AuthzService {
         return hasRole(authentication, "SUPER_ADMIN");
     }
 
+    /** Kiểm tra xem user hiện tại có phải là userId được truyền vào không */
+    public boolean isOwnProfile(Authentication authentication, Integer userId) {
+        if (userId == null) return false;
+        String keycloakUserId = getSub(authentication);
+        if (keycloakUserId == null) return false;
+        
+        // Lấy userId từ keycloakUserId
+        Integer currentUserId = userRoleRepo.findUserIdByKeycloakUserId(keycloakUserId);
+        return currentUserId != null && currentUserId.equals(userId);
+    }
+
     // ===================== CENTER-LEVEL ACCESS =====================
 
     /**

@@ -360,4 +360,37 @@ public class ClassTeacherService {
                 classTeacher.getCreatedAt(),
                 classTeacher.getAssignedBy() != null ? classTeacher.getAssignedBy().getUserId().toString() : null);
     }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên đang được gán
+     * Chỉ trả về các lớp có assignment đang active
+     */
+    public List<com.example.sis.dtos.classes.ClassLiteResponse> getClassesByTeacherId(Integer teacherId) {
+        // Validate teacher exists
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with id: " + teacherId));
+
+        // Kiểm tra teacher có role LECTURER không
+        String lecturerKeycloakId = teacher.getKeycloakUserId();
+        if (lecturerKeycloakId == null
+                || !userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(lecturerKeycloakId, "LECTURER")) {
+            throw new ValidationException("User with id " + teacherId + " does not have LECTURER role");
+        }
+
+        // Lấy danh sách lớp từ assignments đang active
+        List<ClassTeacher> activeAssignments = classTeacherRepository.findActiveByTeacherId(teacherId);
+
+        // Map sang ClassLiteResponse
+        return activeAssignments.stream()
+                .map(ct -> {
+                    ClassEntity classEntity = ct.getClassEntity();
+                    return new com.example.sis.dtos.classes.ClassLiteResponse(
+                            classEntity.getClassId(),
+                            classEntity.getName(),
+                            classEntity.getProgram().getName(),
+                            classEntity.getCenter().getName(),
+                            classEntity.getStatus());
+                })
+                .collect(Collectors.toList());
+    }
 }
