@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.header.HeaderWriterFilter;
@@ -131,7 +132,7 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/students/**").authenticated()
 
                                                 .anyRequest().authenticated())
-                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults())); // dùng JWT Bearer từ Keycloak
 
                 // Đăng ký filter sau BearerTokenAuthenticationFilter
                 http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
