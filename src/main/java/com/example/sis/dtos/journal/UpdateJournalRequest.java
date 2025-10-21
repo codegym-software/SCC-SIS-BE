@@ -1,10 +1,12 @@
 package com.example.sis.dtos.journal;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * DTO để cập nhật nhật ký lớp học
@@ -20,7 +22,12 @@ public class UpdateJournalRequest {
     private String content;
 
     @NotNull(message = "Ngày nhật ký không được để trống")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate journalDate;
+
+    @NotNull(message = "Giờ nhật ký không được để trống")
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime journalTime;
 
     private String journalType; // PROGRESS, ANNOUNCEMENT, ISSUE, NOTE, OTHER
 
@@ -48,6 +55,14 @@ public class UpdateJournalRequest {
 
     public void setJournalDate(LocalDate journalDate) {
         this.journalDate = journalDate;
+    }
+
+    public LocalTime getJournalTime() {
+        return journalTime;
+    }
+
+    public void setJournalTime(LocalTime journalTime) {
+        this.journalTime = journalTime;
     }
 
     public String getJournalType() {

@@ -21,16 +21,18 @@ public interface ClassJournalService {
      * @param journalId ID nhật ký cần cập nhật
      * @param request Dữ liệu cập nhật
      * @param updatedByUserId ID người cập nhật (phải là chủ sở hữu hoặc SUPER_ADMIN)
+     * @param isSuperAdmin True nếu người cập nhật là SUPER_ADMIN
      * @return Thông tin nhật ký sau khi cập nhật
      */
-    JournalResponse updateJournal(Integer journalId, UpdateJournalRequest request, Integer updatedByUserId);
+    JournalResponse updateJournal(Integer journalId, UpdateJournalRequest request, Integer updatedByUserId, boolean isSuperAdmin);
 
     /**
      * Xóa mềm nhật ký lớp học
      * @param journalId ID nhật ký cần xóa
      * @param deletedByUserId ID người xóa (phải là chủ sở hữu hoặc SUPER_ADMIN)
+     * @param isSuperAdmin True nếu người xóa là SUPER_ADMIN
      */
-    void softDeleteJournal(Integer journalId, Integer deletedByUserId);
+    void softDeleteJournal(Integer journalId, Integer deletedByUserId, boolean isSuperAdmin);
 
     /**
      * Lấy danh sách nhật ký theo lớp học
