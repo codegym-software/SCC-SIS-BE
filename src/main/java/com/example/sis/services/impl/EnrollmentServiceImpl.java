@@ -90,6 +90,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 classId, student.getStudentId(), enrolledAt);
         if (existed.isPresent()) return toResp(existed.get());
 
+        // ===== KIỂM TRA TRÙNG LỊCH HỌC (study_days + study_time) =====
+        checkScheduleConflict(student.getStudentId(), clazz, today);
+
         Enrollment e = new Enrollment();
         e.setClassEntity(clazz);
         e.setStudent(student);
@@ -231,5 +234,62 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         r.setLeftAt(e.getLeftAt());
         r.setNote(e.getNote());
         return r;
+    }
+
+    /**
+     * Kiểm tra xung đột lịch học:
+     * - Kiểm tra xem học sinh có đang học lớp nào ACTIVE khác không
+     * - Nếu có trùng study_days (chỉ cần trùng 1 ngày trong 2 ngày) 
+     *   -> Kiểm tra tiếp study_time
+     *   -> Nếu trùng cả study_time -> throw exception
+     * - Nếu không trùng ngày nào -> OK
+     */
+    private void checkScheduleConflict(Integer studentId, ClassEntity newClass, LocalDate today) {
+        // Lấy tất cả các enrollment ACTIVE của học sinh này
+        var activeEnrollments = enrollmentRepo.findAll().stream()
+                .filter(e -> e.getStudent().getStudentId().equals(studentId))
+                .filter(e -> e.getStatus() == EnrollmentStatus.ACTIVE)
+                .filter(e -> e.getEffectiveEndDate() == null || e.getEffectiveEndDate().isAfter(today) || e.getEffectiveEndDate().isEqual(today))
+                .toList();
+
+        if (activeEnrollments.isEmpty()) {
+            return; // Không có lớp nào đang học -> OK
+        }
+
+        // Kiểm tra xung đột với từng lớp đang học
+        for (Enrollment existingEnrollment : activeEnrollments) {
+            ClassEntity existingClass = existingEnrollment.getClassEntity();
+            
+            // Bỏ qua nếu một trong hai lớp không có thông tin lịch học
+            if (newClass.getStudyDays() == null || newClass.getStudyTime() == null ||
+                existingClass.getStudyDays() == null || existingClass.getStudyTime() == null) {
+                continue;
+            }
+
+            // Kiểm tra xem có trùng ngày học không
+            boolean hasDayConflict = false;
+            for (var newDay : newClass.getStudyDays()) {
+                if (existingClass.getStudyDays().contains(newDay)) {
+                    hasDayConflict = true;
+                    break;
+                }
+            }
+
+            // Nếu không trùng ngày nào -> OK, kiểm tra lớp tiếp theo
+            if (!hasDayConflict) {
+                continue;
+            }
+
+            // Nếu trùng ngày, kiểm tra ca học
+            if (newClass.getStudyTime() == existingClass.getStudyTime()) {
+                // Trùng cả ca học -> Throw exception
+                throw new BadRequestException(
+                    String.format("Xung đột lịch học: Học sinh đã đăng ký lớp '%s' vào cùng ngày và ca học (%s)",
+                        existingClass.getName(),
+                        existingClass.getStudyTime().name())
+                );
+            }
+            // Nếu khác ca học -> OK, cho phép đăng ký
+        }
     }
 }

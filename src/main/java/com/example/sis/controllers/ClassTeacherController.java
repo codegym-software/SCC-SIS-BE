@@ -14,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
@@ -122,6 +121,20 @@ public class ClassTeacherController {
         BatchAssignLecturerResponse response = classTeacherService.batchAssignLecturers(classId, request, assignedBy);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên đang được phân công (với thông tin lịch học đầy đủ)
+     * Endpoint này để hỗ trợ kiểm tra trùng lịch
+     */
+    @GetMapping("/lecturers/{lecturerId}/classes")
+    public ResponseEntity<List<com.example.sis.dtos.classes.ClassResponse>> getClassesByTeacher(
+            @PathVariable Integer lecturerId) {
+        
+        List<com.example.sis.dtos.classes.ClassResponse> classes = 
+            classTeacherService.getClassesByTeacherId(lecturerId);
+        
+        return ResponseEntity.ok(classes);
     }
 
     /**
