@@ -124,7 +124,12 @@ public class GlobalExceptionHandler {
         String field = fieldError.getField();
         String message = fieldError.getDefaultMessage();
 
-        // Chuyển đổi một số thông báo lỗi phổ biến sang tiếng Việt
+        // Nếu có message custom từ annotation, trả về luôn
+        if (message != null && !message.startsWith("must")) {
+            return message;
+        }
+
+        // Chỉ chuyển đổi các message mặc định sang tiếng Việt
         switch (message) {
             case "must not be blank":
                 return "Trường " + field + " không được để trống";
@@ -135,7 +140,7 @@ public class GlobalExceptionHandler {
             case "must be a valid email":
                 return "Trường " + field + " phải là email hợp lệ";
             default:
-                return "Trường " + field + " không hợp lệ";
+                return message != null ? message : "Trường " + field + " không hợp lệ";
         }
     }
 
