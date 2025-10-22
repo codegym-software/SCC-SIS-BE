@@ -3,16 +3,13 @@ package com.example.sis.services;
 import com.example.sis.dtos.classteacher.AssignLecturerRequest;
 import com.example.sis.dtos.classteacher.BatchAssignLecturerRequest;
 import com.example.sis.dtos.classteacher.BatchAssignLecturerResponse;
-import com.example.sis.dtos.classteacher.BatchAssignLecturerItem;
 import com.example.sis.dtos.classteacher.ClassLecturerResponse;
 import com.example.sis.dtos.classteacher.ClassLecturerItem;
 import com.example.sis.dtos.classteacher.LecturerLite;
 import com.example.sis.dtos.classteacher.ListResponse;
 import com.example.sis.exceptions.ResourceNotFoundException;
 import com.example.sis.exceptions.ValidationException;
-import com.example.sis.exceptions.LecturerAlreadyAssignedException;
 import com.example.sis.exceptions.ClassMaxActiveLecturersExceededException;
-import com.example.sis.exceptions.AssignmentNotFoundException;
 import com.example.sis.exceptions.ConflictException;
 import com.example.sis.models.ClassEntity;
 import com.example.sis.models.ClassTeacher;
@@ -21,8 +18,6 @@ import com.example.sis.repositories.ClassRepository;
 import com.example.sis.repositories.ClassTeacherRepository;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.repositories.UserRoleRepository;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,6 +89,9 @@ public class ClassTeacherService {
         if (conflicts > 0) {
             throw new ValidationException("Lecturer has already been assigned to this class on " + startDate);
         }
+
+        // ===== KIỂM TRA TRÙNG LỊCH HỌC (study_days + study_time) =====
+        checkLecturerScheduleConflict(lecturerId, classEntity, LocalDate.now());
 
         // Lấy User entity cho assignedBy
         User assignedByUser = assignedBy != null ? userRepository.findById(assignedBy).orElse(null) : null;
@@ -255,6 +253,15 @@ public class ClassTeacherService {
                     continue;
                 }
 
+                // ===== KIỂM TRA TRÙNG LỊCH HỌC (study_days + study_time) =====
+                try {
+                    checkLecturerScheduleConflict(lecturerId, classEntity, LocalDate.now());
+                } catch (ValidationException e) {
+                    // Nếu trùng lịch, bỏ qua giảng viên này
+                    skipped.add(lecturerId);
+                    continue;
+                }
+
                 // Kiểm tra sau khi thêm sẽ vượt quá giới hạn không
                 if (currentActiveCount + created >= maxLecturers) {
                     throw new ClassMaxActiveLecturersExceededException(
@@ -362,10 +369,10 @@ public class ClassTeacherService {
     }
 
     /**
-     * Lấy danh sách lớp học mà giảng viên đang được gán
+     * Lấy danh sách lớp học mà giảng viên đang được gán (với đầy đủ thông tin lịch học)
      * Chỉ trả về các lớp có assignment đang active
      */
-    public List<com.example.sis.dtos.classes.ClassLiteResponse> getClassesByTeacherId(Integer teacherId) {
+    public List<com.example.sis.dtos.classes.ClassResponse> getClassesByTeacherId(Integer teacherId) {
         // Validate teacher exists
         User teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found with id: " + teacherId));
@@ -380,17 +387,89 @@ public class ClassTeacherService {
         // Lấy danh sách lớp từ assignments đang active
         List<ClassTeacher> activeAssignments = classTeacherRepository.findActiveByTeacherId(teacherId);
 
-        // Map sang ClassLiteResponse
+        // Map sang ClassResponse với đầy đủ thông tin
         return activeAssignments.stream()
                 .map(ct -> {
                     ClassEntity classEntity = ct.getClassEntity();
-                    return new com.example.sis.dtos.classes.ClassLiteResponse(
-                            classEntity.getClassId(),
-                            classEntity.getName(),
-                            classEntity.getProgram().getName(),
-                            classEntity.getCenter().getName(),
-                            classEntity.getStatus());
+                    com.example.sis.dtos.classes.ClassResponse response = new com.example.sis.dtos.classes.ClassResponse();
+                    response.setClassId(classEntity.getClassId());
+                    response.setCenterId(classEntity.getCenter().getCenterId());
+                    response.setCenterName(classEntity.getCenter().getName());
+                    response.setProgramId(classEntity.getProgram().getProgramId());
+                    response.setProgramName(classEntity.getProgram().getName());
+                    response.setProgramCode(classEntity.getProgram().getCode());
+                    response.setName(classEntity.getName());
+                    response.setDescription(classEntity.getDescription());
+                    response.setStartDate(classEntity.getStartDate());
+                    response.setEndDate(classEntity.getEndDate());
+                    response.setStatus(classEntity.getStatus());
+                    response.setRoom(classEntity.getRoom());
+                    response.setCapacity(classEntity.getCapacity());
+                    response.setStudyDays(classEntity.getStudyDays());
+                    response.setStudyTime(classEntity.getStudyTime());
+                    response.setCreatedAt(classEntity.getCreatedAt());
+                    response.setUpdatedAt(classEntity.getUpdatedAt());
+                    response.setCreatedBy(classEntity.getCreatedBy() != null ? classEntity.getCreatedBy().getUserId() : null);
+                    response.setUpdatedBy(classEntity.getUpdatedBy() != null ? classEntity.getUpdatedBy().getUserId() : null);
+                    return response;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Kiểm tra xung đột lịch dạy của giảng viên:
+     * - Kiểm tra xem giảng viên có đang dạy lớp nào ACTIVE khác không (kể cả ở trung tâm khác)
+     * - Nếu có trùng study_days (chỉ cần trùng 1 ngày trong 2 ngày)
+     *   -> Kiểm tra tiếp study_time
+     *   -> Nếu trùng cả study_time -> throw exception
+     * - Nếu không trùng ngày nào -> OK
+     * - Nếu khác ca học -> OK
+     */
+    private void checkLecturerScheduleConflict(Integer lecturerId, ClassEntity newClass, LocalDate today) {
+        // Lấy tất cả các assignment ACTIVE của giảng viên này (bao gồm cả ở trung tâm khác)
+        List<ClassTeacher> activeAssignments = classTeacherRepository.findActiveByTeacherId(lecturerId);
+
+        if (activeAssignments.isEmpty()) {
+            return; // Không có lớp nào đang dạy -> OK
+        }
+
+        // Kiểm tra xung đột với từng lớp đang dạy
+        for (ClassTeacher existingAssignment : activeAssignments) {
+            ClassEntity existingClass = existingAssignment.getClassEntity();
+            
+            // Bỏ qua nếu một trong hai lớp không có thông tin lịch học
+            if (newClass.getStudyDays() == null || newClass.getStudyTime() == null ||
+                existingClass.getStudyDays() == null || existingClass.getStudyTime() == null) {
+                continue;
+            }
+
+            // Kiểm tra xem có trùng ngày học không
+            boolean hasDayConflict = false;
+            for (var newDay : newClass.getStudyDays()) {
+                if (existingClass.getStudyDays().contains(newDay)) {
+                    hasDayConflict = true;
+                    break;
+                }
+            }
+
+            // Nếu không trùng ngày nào -> OK, kiểm tra lớp tiếp theo
+            if (!hasDayConflict) {
+                continue;
+            }
+
+            // Nếu trùng ngày, kiểm tra ca học
+            if (newClass.getStudyTime() == existingClass.getStudyTime()) {
+                // Trùng cả ca học -> Throw exception
+                String centerInfo = existingClass.getCenter() != null ? 
+                    " tại trung tâm " + existingClass.getCenter().getName() : "";
+                throw new ValidationException(
+                    String.format("Xung đột lịch dạy: Giảng viên đã được phân công dạy lớp '%s'%s vào cùng ngày và ca học (%s)",
+                        existingClass.getName(),
+                        centerInfo,
+                        existingClass.getStudyTime().name())
+                );
+            }
+            // Nếu khác ca học -> OK, cho phép phân công
+        }
     }
 }

@@ -1,6 +1,6 @@
 package com.example.sis.controllers;
 
-import com.example.sis.dtos.classes.ClassLiteResponse;
+import com.example.sis.dtos.classes.ClassResponse;
 import com.example.sis.services.ClassTeacherService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,8 +28,8 @@ public class LecturerClassController {
      */
     @GetMapping("/{teacherId}/classes")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.isOwnProfile(authentication, #teacherId)")
-    public ResponseEntity<List<ClassLiteResponse>> getClassesByTeacher(@PathVariable Integer teacherId) {
-        List<ClassLiteResponse> classes = classTeacherService.getClassesByTeacherId(teacherId);
+    public ResponseEntity<List<ClassResponse>> getClassesByTeacher(@PathVariable Integer teacherId) {
+        List<ClassResponse> classes = classTeacherService.getClassesByTeacherId(teacherId);
         return ResponseEntity.ok(classes);
     }
 }
