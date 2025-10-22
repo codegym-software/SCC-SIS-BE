@@ -94,7 +94,7 @@ public class ClassJournalServiceImpl implements ClassJournalService {
 
         // Kiểm tra quyền: chỉ chủ sở hữu hoặc SUPER_ADMIN mới được cập nhật
         if (!isSuperAdmin && !journal.getTeacher().getUserId().equals(updatedByUserId)) {
-            throw new BadRequestException("Bạn không có quyền cập nhật nhật ký này");
+            throw new BadRequestException("Bạn không có quyền chỉnh sửa nhật ký này");
         }
 
         // Tìm User để set updatedBy
