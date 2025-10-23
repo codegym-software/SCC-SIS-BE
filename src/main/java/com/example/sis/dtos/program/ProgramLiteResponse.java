@@ -10,7 +10,6 @@ public class ProgramLiteResponse {
     private Integer durationHours;
     private Program.DeliveryMode deliveryMode;
     private String categoryCode;
-    private String level;
     private Boolean isActive;
 
     // Constructors
@@ -19,7 +18,7 @@ public class ProgramLiteResponse {
 
     public ProgramLiteResponse(Integer programId, String code, String name, String description,
             Integer durationHours, Program.DeliveryMode deliveryMode, String categoryCode,
-            String level, Boolean isActive) {
+            Boolean isActive) {
         this.programId = programId;
         this.code = code;
         this.name = name;
@@ -27,7 +26,6 @@ public class ProgramLiteResponse {
         this.durationHours = durationHours;
         this.deliveryMode = deliveryMode;
         this.categoryCode = categoryCode;
-        this.level = level;
         this.isActive = isActive;
     }
 
@@ -86,14 +84,6 @@ public class ProgramLiteResponse {
 
     public void setCategoryCode(String categoryCode) {
         this.categoryCode = categoryCode;
-    }
-
-    public String getLevel() {
-        return level;
-    }
-
-    public void setLevel(String level) {
-        this.level = level;
     }
 
     public Boolean getIsActive() {
