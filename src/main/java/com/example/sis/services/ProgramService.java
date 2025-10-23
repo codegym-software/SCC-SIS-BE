@@ -65,7 +65,6 @@ public class ProgramService {
                 program.getDurationHours(),
                 program.getDeliveryMode(),
                 program.getCategoryCode(),
-                program.getLevel(),
                 program.getIsActive());
     }
 }

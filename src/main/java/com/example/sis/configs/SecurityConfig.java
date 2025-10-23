@@ -89,6 +89,13 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/programs").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/programs/lite").authenticated()
 
+                                                // Modules (Học phần)
+                                                .requestMatchers(HttpMethod.GET, "/api/modules").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/modules").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/modules/**").authenticated()
+
                                                 // Classes
                                                 .requestMatchers(HttpMethod.GET, "/api/classes").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/**").authenticated()
