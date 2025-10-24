@@ -153,6 +153,70 @@ public class ModuleController {
         return ResponseEntity.ok(modules);
     }
 
+    /**
+     * Gắn tài liệu (resourceUrl) vào module
+     * 
+     * Endpoint: PUT /api/modules/{moduleId}/resource
+     * 
+     * Phân quyền:
+     * - Super Admin: Gắn tài liệu cho bất kỳ module nào
+     * - Training Manager: Gắn tài liệu cho modules trong center của mình
+     * 
+     * @param moduleId ID của module
+     * @param request Request body chứa resourceUrl
+     */
+    @PutMapping("/{moduleId}/resource")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TRAINING_MANAGER')")
+    public ResponseEntity<ModuleResponse> attachResource(
+            @PathVariable Integer moduleId,
+            @Valid @RequestBody com.example.sis.dtos.module.AttachResourceRequest request,
+            Authentication authentication) {
+        
+        Integer updatedBy = getCurrentUserId(authentication);
+        ModuleResponse response = moduleService.attachResource(
+            moduleId, 
+            request.getResourceUrl(), 
+            updatedBy
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Xóa tài liệu khỏi module
+     * - Nếu có query param ?url=... → Xóa TỪNG resource cụ thể
+     * - Nếu không có query param → Xóa TOÀN BỘ resources (set null)
+     * 
+     * Endpoint: DELETE /api/modules/{moduleId}/resource
+     * Endpoint: DELETE /api/modules/{moduleId}/resource?url={resourceUrl}
+     * 
+     * Phân quyền:
+     * - Super Admin: Xóa tài liệu của bất kỳ module nào
+     * - Training Manager: Xóa tài liệu của modules trong center của mình
+     * 
+     * @param moduleId ID của module
+     * @param url (Optional) URL của tài liệu cần xóa. Nếu null thì xóa hết
+     */
+    @DeleteMapping("/{moduleId}/resource")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TRAINING_MANAGER')")
+    public ResponseEntity<ModuleResponse> removeResource(
+            @PathVariable Integer moduleId,
+            @RequestParam(required = false) String url,
+            Authentication authentication) {
+        
+        Integer updatedBy = getCurrentUserId(authentication);
+        
+        ModuleResponse response;
+        if (url != null && !url.isEmpty()) {
+            // Xóa TỪNG resource theo URL
+            response = moduleService.removeResourceByUrl(moduleId, url, updatedBy);
+        } else {
+            // Xóa TOÀN BỘ resources
+            response = moduleService.removeResource(moduleId, updatedBy);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
     // ===== Helper Methods =====
 
     /**

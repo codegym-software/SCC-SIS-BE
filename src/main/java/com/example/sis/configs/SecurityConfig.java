@@ -94,7 +94,12 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/modules/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/modules").authenticated()
                                                 .requestMatchers(HttpMethod.PUT, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/modules/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/modules/**").authenticated()
+
+                                                // File Upload
+                                                .requestMatchers(HttpMethod.POST, "/api/files/upload/**").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll() // Cho phép truy cập file đã upload
 
                                                 // Classes
                                                 .requestMatchers(HttpMethod.GET, "/api/classes").authenticated()

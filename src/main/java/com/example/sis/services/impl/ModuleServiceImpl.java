@@ -2,6 +2,7 @@ package com.example.sis.services.impl;
 
 import com.example.sis.dtos.module.CreateModuleRequest;
 import com.example.sis.dtos.module.ModuleResponse;
+import com.example.sis.dtos.module.ModuleResourceDto;
 import com.example.sis.dtos.module.UpdateModuleRequest;
 import com.example.sis.exceptions.BadRequestException;
 import com.example.sis.exceptions.ConflictException;
@@ -13,10 +14,14 @@ import com.example.sis.repositories.ModuleRepository;
 import com.example.sis.repositories.ProgramRepository;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.services.ModuleService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -68,7 +73,6 @@ public class ModuleServiceImpl implements ModuleService {
         module.setDurationHours(request.getDurationHours());
         module.setLevel(request.getLevel());
         module.setIsMandatory(request.getIsMandatory() != null ? request.getIsMandatory() : true);
-        module.setSyllabusUrl(request.getSyllabusUrl());
         module.setHasSyllabus(request.getHasSyllabus() != null ? request.getHasSyllabus() : false);
         module.setNotes(request.getNotes());
         module.setIsActive(true);
@@ -149,9 +153,6 @@ public class ModuleServiceImpl implements ModuleService {
         }
         if (request.getIsMandatory() != null) {
             module.setIsMandatory(request.getIsMandatory());
-        }
-        if (request.getSyllabusUrl() != null) {
-            module.setSyllabusUrl(request.getSyllabusUrl());
         }
         if (request.getHasSyllabus() != null) {
             module.setHasSyllabus(request.getHasSyllabus());
@@ -428,6 +429,8 @@ public class ModuleServiceImpl implements ModuleService {
 
     // ===== Helper Methods =====
 
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
     private ModuleResponse toResponse(Module module) {
         ModuleResponse response = new ModuleResponse();
         response.setModuleId(module.getModuleId());
@@ -448,7 +451,12 @@ public class ModuleServiceImpl implements ModuleService {
         response.setDurationHours(module.getDurationHours());
         response.setLevel(module.getLevel());
         response.setIsMandatory(module.getIsMandatory());
-        response.setSyllabusUrl(module.getSyllabusUrl());
+        
+        // Parse JSON array từ syllabusUrl thành List<ModuleResourceDto>
+        List<ModuleResourceDto> resources = parseResources(module.getSyllabusUrl());
+        response.setResources(resources);
+        response.setSyllabusUrl(module.getSyllabusUrl()); // Giữ để backward compatibility
+        
         response.setHasSyllabus(module.getHasSyllabus());
         response.setNotes(module.getNotes());
         response.setIsActive(module.getIsActive());
@@ -464,6 +472,37 @@ public class ModuleServiceImpl implements ModuleService {
         }
 
         return response;
+    }
+
+    /**
+     * Parse JSON string thành List<ModuleResourceDto>
+     */
+    private List<ModuleResourceDto> parseResources(String jsonString) {
+        if (jsonString == null || jsonString.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        try {
+            return objectMapper.readValue(jsonString, new TypeReference<List<ModuleResourceDto>>() {});
+        } catch (Exception e) {
+            // Nếu parse lỗi, trả về empty list
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Convert List<ModuleResourceDto> thành JSON string
+     */
+    private String resourcesToJson(List<ModuleResourceDto> resources) {
+        if (resources == null || resources.isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return objectMapper.writeValueAsString(resources);
+        } catch (Exception e) {
+            throw new BadRequestException("Không thể chuyển đổi resources thành JSON");
+        }
     }
 
     /**
@@ -496,6 +535,135 @@ public class ModuleServiceImpl implements ModuleService {
 
         // Trả về danh sách modules sau khi sắp xếp lại
         return getModulesByProgramId(programId);
+    }
+
+    /**
+     * Gắn tài liệu (resourceUrl) vào module
+     * Thêm vào JSON array thay vì thay thế
+     */
+    @Override
+    @Transactional
+    public ModuleResponse attachResource(Integer moduleId, String resourceUrl, Integer updatedBy) {
+        // Tìm module
+        Module module = moduleRepository.findActiveById(moduleId)
+                .orElseThrow(() -> new NotFoundException("Module không tồn tại với ID: " + moduleId));
+
+        // Validate resourceUrl
+        if (resourceUrl == null || resourceUrl.trim().isEmpty()) {
+            throw new BadRequestException("Resource URL không được để trống");
+        }
+
+        // Parse JSON array hiện tại
+        List<ModuleResourceDto> resources = parseResources(module.getSyllabusUrl());
+
+        // Tạo resource mới
+        ModuleResourceDto newResource = new ModuleResourceDto();
+        newResource.setUrl(resourceUrl);
+        newResource.setUploadedAt(LocalDateTime.now());
+        newResource.setUploadedBy(updatedBy);
+
+        // Auto-detect resource type
+        if (resourceUrl.contains("youtube.com") || resourceUrl.contains("youtu.be")) {
+            newResource.setFileType("YOUTUBE");
+            newResource.setFileName("YouTube Video");
+        } else if (resourceUrl.contains("drive.google.com")) {
+            newResource.setFileType("GOOGLE_DRIVE");
+            newResource.setFileName("Google Drive File");
+        } else if (resourceUrl.endsWith(".pdf")) {
+            newResource.setFileType("PDF");
+            newResource.setFileName("PDF Document");
+        } else if (resourceUrl.endsWith(".docx") || resourceUrl.endsWith(".doc")) {
+            newResource.setFileType("DOCX");
+            newResource.setFileName("Word Document");
+        } else {
+            newResource.setFileType("EXTERNAL_LINK");
+            newResource.setFileName("External Link");
+        }
+
+        // Thêm resource mới vào đầu danh sách
+        resources.add(0, newResource);
+
+        // Convert về JSON
+        String jsonString = resourcesToJson(resources);
+
+        // Update module
+        module.setSyllabusUrl(jsonString);
+        module.setHasSyllabus(true);
+        module.setUpdatedAt(LocalDateTime.now());
+
+        // Set updater
+        if (updatedBy != null) {
+            User updater = userRepository.findById(updatedBy).orElse(null);
+            module.setUpdatedBy(updater);
+        }
+
+        // Lưu module
+        Module savedModule = moduleRepository.save(module);
+
+        return toResponse(savedModule);
+    }
+
+    /**
+     * Xóa 1 tài liệu khỏi module (theo URL)
+     * Nếu xóa hết thì set syllabusUrl = null
+     */
+    @Override
+    @Transactional
+    public ModuleResponse removeResource(Integer moduleId, Integer updatedBy) {
+        // Tìm module
+        Module module = moduleRepository.findActiveById(moduleId)
+                .orElseThrow(() -> new NotFoundException("Module không tồn tại với ID: " + moduleId));
+
+        // Set resourceUrl = null (xóa tất cả)
+        module.setSyllabusUrl(null);
+        module.setHasSyllabus(false);
+        module.setUpdatedAt(LocalDateTime.now());
+
+        // Set updater
+        if (updatedBy != null) {
+            User updater = userRepository.findById(updatedBy).orElse(null);
+            module.setUpdatedBy(updater);
+        }
+
+        // Lưu module
+        Module savedModule = moduleRepository.save(module);
+
+        return toResponse(savedModule);
+    }
+
+    /**
+     * Xóa 1 tài liệu cụ thể theo URL
+     */
+    @Transactional
+    public ModuleResponse removeResourceByUrl(Integer moduleId, String resourceUrl, Integer updatedBy) {
+        // Tìm module
+        Module module = moduleRepository.findActiveById(moduleId)
+                .orElseThrow(() -> new NotFoundException("Module không tồn tại với ID: " + moduleId));
+
+        // Parse JSON array
+        List<ModuleResourceDto> resources = parseResources(module.getSyllabusUrl());
+
+        // Xóa resource có URL trùng
+        resources.removeIf(r -> r.getUrl().equals(resourceUrl));
+
+        // Convert về JSON
+        String jsonString = resources.isEmpty() ? null : resourcesToJson(resources);
+
+        // Update module
+        module.setSyllabusUrl(jsonString);
+        module.setHasSyllabus(!resources.isEmpty());
+        module.setUpdatedAt(LocalDateTime.now());
+
+        // Set updater
+        if (updatedBy != null) {
+            User updater = userRepository.findById(updatedBy).orElse(null);
+            module.setUpdatedBy(updater);
+        }
+
+        // Lưu module
+        Module savedModule = moduleRepository.save(module);
+
+        return toResponse(savedModule);
     }
 }
 

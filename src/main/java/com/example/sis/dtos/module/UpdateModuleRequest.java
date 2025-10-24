@@ -30,10 +30,6 @@ public class UpdateModuleRequest {
 
     private Boolean isMandatory;
 
-    @Size(max = 500, message = "URL đề cương không được vượt quá 500 ký tự")
-    @Pattern(regexp = "^(https?://.*)?$", message = "URL đề cương phải là URL hợp lệ (http/https)")
-    private String syllabusUrl;
-
     private Boolean hasSyllabus;
 
     @Size(max = 1000, message = "Ghi chú không được vượt quá 1000 ký tự")
@@ -96,14 +92,6 @@ public class UpdateModuleRequest {
 
     public void setIsMandatory(Boolean isMandatory) {
         this.isMandatory = isMandatory;
-    }
-
-    public String getSyllabusUrl() {
-        return syllabusUrl;
-    }
-
-    public void setSyllabusUrl(String syllabusUrl) {
-        this.syllabusUrl = syllabusUrl;
     }
 
     public Boolean getHasSyllabus() {
