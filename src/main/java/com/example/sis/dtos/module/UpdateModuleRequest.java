@@ -14,11 +14,8 @@ public class UpdateModuleRequest {
     @Size(max = 5000, message = "Mô tả không được vượt quá 5000 ký tự")
     private String description;
 
-    @Positive(message = "Thứ tự môn học phải là số dương")
-    private Integer sequenceOrder;
-
-    @Positive(message = "Học kỳ phải là số dương")
-    private Integer semester;
+    // sequenceOrder và semester không cho phép sửa qua API này
+    // Sử dụng endpoint PATCH /api/modules/reorder để thay đổi thứ tự
 
     @Min(value = 1, message = "Số tín chỉ phải từ 1-10")
     @Max(value = 10, message = "Số tín chỉ phải từ 1-10")
@@ -67,22 +64,6 @@ public class UpdateModuleRequest {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public Integer getSequenceOrder() {
-        return sequenceOrder;
-    }
-
-    public void setSequenceOrder(Integer sequenceOrder) {
-        this.sequenceOrder = sequenceOrder;
-    }
-
-    public Integer getSemester() {
-        return semester;
-    }
-
-    public void setSemester(Integer semester) {
-        this.semester = semester;
     }
 
     public Integer getCredits() {
@@ -149,6 +130,7 @@ public class UpdateModuleRequest {
         this.isActive = isActive;
     }
 }
+
 
 
 
