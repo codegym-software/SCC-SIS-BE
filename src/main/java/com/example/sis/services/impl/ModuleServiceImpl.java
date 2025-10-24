@@ -128,14 +128,8 @@ public class ModuleServiceImpl implements ModuleService {
             module.setCode(request.getCode());
         }
 
-        // Cập nhật sequence order (nếu có)
-        if (request.getSequenceOrder() != null && !request.getSequenceOrder().equals(module.getSequenceOrder())) {
-            if (moduleRepository.existsByProgramIdAndSequenceOrderExcludingId(
-                    module.getProgramId(), request.getSequenceOrder(), moduleId)) {
-                throw new ConflictException("Thứ tự " + request.getSequenceOrder() + " đã được sử dụng trong program này");
-            }
-            module.setSequenceOrder(request.getSequenceOrder());
-        }
+        // KHÔNG cho phép cập nhật sequenceOrder và semester qua API này
+        // Sử dụng endpoint PATCH /api/modules/reorder để thay đổi thứ tự
 
         // Cập nhật các field khác
         if (request.getName() != null) {
@@ -143,9 +137,6 @@ public class ModuleServiceImpl implements ModuleService {
         }
         if (request.getDescription() != null) {
             module.setDescription(request.getDescription());
-        }
-        if (request.getSemester() != null) {
-            module.setSemester(request.getSemester());
         }
         if (request.getCredits() != null) {
             module.setCredits(request.getCredits());

@@ -95,6 +95,10 @@ public class ModuleController {
     /**
      * Cập nhật module
      * 
+     * Lưu ý:
+     * - KHÔNG cho phép sửa sequenceOrder và semester
+     * - Để thay đổi thứ tự module, sử dụng PATCH /api/modules/reorder
+     * 
      * Phân quyền:
      * - Super Admin: Cập nhật bất kỳ module nào
      * - Training Manager: Cập nhật modules trong center của mình

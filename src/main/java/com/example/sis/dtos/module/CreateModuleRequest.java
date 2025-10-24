@@ -20,7 +20,7 @@ public class CreateModuleRequest {
     @Size(max = 5000, message = "Mô tả không được vượt quá 5000 ký tự")
     private String description;
 
-    @NotNull(message = "Thứ tự môn học không được null")
+    // sequenceOrder là OPTIONAL - Nếu không điền, hệ thống tự động lấy max + 1 theo programId
     @Positive(message = "Thứ tự môn học phải là số dương")
     private Integer sequenceOrder;
 
