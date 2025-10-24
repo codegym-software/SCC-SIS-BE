@@ -63,7 +63,8 @@ public class Module {
     private Boolean isMandatory = true;
 
     // ===== ĐỀ CƯƠNG (SYLLABUS) =====
-    @Column(name = "syllabus_url", length = 500)
+    // JSON array: [{"url":"...","fileName":"...","fileType":"...","fileSize":123,"uploadedAt":"...","uploadedBy":1}]
+    @Column(name = "syllabus_url", columnDefinition = "TEXT")
     private String syllabusUrl;
 
     @Column(name = "has_syllabus", nullable = false)

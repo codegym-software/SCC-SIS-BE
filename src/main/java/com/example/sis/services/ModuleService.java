@@ -94,6 +94,32 @@ public interface ModuleService {
      * @return Danh sách modules sau khi sắp xếp lại
      */
     List<ModuleResponse> resequenceModules(Integer programId);
+
+    /**
+     * Gắn tài liệu (resourceUrl) vào module
+     * @param moduleId ID của module
+     * @param resourceUrl URL của tài liệu (YouTube, Drive, uploaded file, etc.)
+     * @param updatedBy User ID người cập nhật
+     * @return ModuleResponse
+     */
+    ModuleResponse attachResource(Integer moduleId, String resourceUrl, Integer updatedBy);
+
+    /**
+     * Xóa tài liệu khỏi module (set resourceUrl = null)
+     * @param moduleId ID của module
+     * @param updatedBy User ID người cập nhật
+     * @return ModuleResponse
+     */
+    ModuleResponse removeResource(Integer moduleId, Integer updatedBy);
+
+    /**
+     * Xóa 1 tài liệu cụ thể theo URL khỏi danh sách resources
+     * @param moduleId ID của module
+     * @param resourceUrl URL của tài liệu cần xóa
+     * @param updatedBy User ID người cập nhật
+     * @return ModuleResponse
+     */
+    ModuleResponse removeResourceByUrl(Integer moduleId, String resourceUrl, Integer updatedBy);
 }
 
 

@@ -1,6 +1,7 @@
 package com.example.sis.dtos.module;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ModuleResponse {
     
@@ -17,7 +18,14 @@ public class ModuleResponse {
     private Integer durationHours;
     private String level;
     private Boolean isMandatory;
+    
+    // DEPRECATED: Giữ để backward compatibility, nhưng không dùng nữa
+    @Deprecated
     private String syllabusUrl;
+    
+    // NEW: Danh sách tài liệu học tập (thay thế syllabusUrl)
+    private List<ModuleResourceDto> resources;
+    
     private Boolean hasSyllabus;
     private String notes;
     private Boolean isActive;
@@ -132,12 +140,22 @@ public class ModuleResponse {
         this.isMandatory = isMandatory;
     }
 
+    @Deprecated
     public String getSyllabusUrl() {
         return syllabusUrl;
     }
 
+    @Deprecated
     public void setSyllabusUrl(String syllabusUrl) {
         this.syllabusUrl = syllabusUrl;
+    }
+
+    public List<ModuleResourceDto> getResources() {
+        return resources;
+    }
+
+    public void setResources(List<ModuleResourceDto> resources) {
+        this.resources = resources;
     }
 
     public Boolean getHasSyllabus() {
