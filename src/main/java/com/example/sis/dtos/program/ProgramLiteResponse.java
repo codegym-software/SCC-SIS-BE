@@ -11,6 +11,7 @@ public class ProgramLiteResponse {
     private Program.DeliveryMode deliveryMode;
     private String categoryCode;
     private Boolean isActive;
+    private Long moduleCount; // Số lượng modules trong program
 
     // Constructors
     public ProgramLiteResponse() {
@@ -18,7 +19,7 @@ public class ProgramLiteResponse {
 
     public ProgramLiteResponse(Integer programId, String code, String name, String description,
             Integer durationHours, Program.DeliveryMode deliveryMode, String categoryCode,
-            Boolean isActive) {
+            Boolean isActive, Long moduleCount) {
         this.programId = programId;
         this.code = code;
         this.name = name;
@@ -27,6 +28,7 @@ public class ProgramLiteResponse {
         this.deliveryMode = deliveryMode;
         this.categoryCode = categoryCode;
         this.isActive = isActive;
+        this.moduleCount = moduleCount;
     }
 
     // Getters and Setters
@@ -92,5 +94,13 @@ public class ProgramLiteResponse {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Long getModuleCount() {
+        return moduleCount;
+    }
+
+    public void setModuleCount(Long moduleCount) {
+        this.moduleCount = moduleCount;
     }
 }

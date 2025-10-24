@@ -3,6 +3,7 @@ package com.example.sis.services;
 import com.example.sis.dtos.program.ProgramLiteResponse;
 import com.example.sis.models.Program;
 import com.example.sis.repositories.ProgramRepository;
+import com.example.sis.repositories.ModuleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.stream.Collectors;
 public class ProgramService {
 
     private final ProgramRepository programRepository;
+    private final ModuleRepository moduleRepository;
 
-    public ProgramService(ProgramRepository programRepository) {
+    public ProgramService(ProgramRepository programRepository, ModuleRepository moduleRepository) {
         this.programRepository = programRepository;
+        this.moduleRepository = moduleRepository;
     }
 
     /**
@@ -54,9 +57,12 @@ public class ProgramService {
     }
 
     /**
-     * Convert Program entity sang ProgramLiteResponse
+     * Convert Program entity sang ProgramLiteResponse (với module count)
      */
     private ProgramLiteResponse convertToProgramLiteResponse(Program program) {
+        // Đếm số lượng modules thuộc program này
+        long moduleCount = moduleRepository.countByProgramId(program.getProgramId());
+        
         return new ProgramLiteResponse(
                 program.getProgramId(),
                 program.getCode(),
@@ -65,6 +71,7 @@ public class ProgramService {
                 program.getDurationHours(),
                 program.getDeliveryMode(),
                 program.getCategoryCode(),
-                program.getIsActive());
+                program.getIsActive(),
+                moduleCount);
     }
 }
