@@ -47,6 +47,11 @@ public interface StudentService {
     byte[] exportStudentsToExcel() throws IOException;
 
     /**
+     * Download template Excel file with headers only (no data rows)
+     */
+    byte[] downloadImportTemplate() throws IOException;
+
+    /**
      * Import students from uploaded Excel file. Returns list of created/parsed StudentResponse.
      * createdByUserId is used to set audit fields for created records.
      */

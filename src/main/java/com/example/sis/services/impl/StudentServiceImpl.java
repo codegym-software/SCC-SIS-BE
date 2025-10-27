@@ -206,6 +206,48 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public byte[] downloadImportTemplate() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Students");
+
+            // Create header row
+            Row header = sheet.createRow(0);
+            String[] columns = new String[] {
+                    "Student ID",
+                    "Full name",
+                    "Email",
+                    "Phone",
+                    "DOB",
+                    "Gender",
+                    "National ID",
+                    "Address",
+                    "Province",
+                    "District",
+                    "Ward",
+                    "Note"
+            };
+
+            // Style for header
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            // Create header cells
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Override
     @Transactional
     public List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException {
         List<StudentResponse> created = new ArrayList<>();

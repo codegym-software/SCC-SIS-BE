@@ -99,6 +99,30 @@ public class StudentController {
     }
 
     /**
+     * Download import template Excel (.xlsx) file with headers only
+     */
+    @GetMapping("/template")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<byte[]> downloadImportTemplate() {
+        try {
+            byte[] data = studentService.downloadImportTemplate();
+
+            String filename = "student_import_template.xlsx";
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(data);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Lấy thông tin chi tiết học viên theo ID
      * - Super Admin: xem chi tiết
      * - Academic Staff: xem chi tiết
