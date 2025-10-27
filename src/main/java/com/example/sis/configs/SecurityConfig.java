@@ -89,6 +89,18 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/programs").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/programs/lite").authenticated()
 
+                                                // Modules (Học phần)
+                                                .requestMatchers(HttpMethod.GET, "/api/modules").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/modules").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/modules/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/modules/**").authenticated()
+
+                                                // File Upload
+                                                .requestMatchers(HttpMethod.POST, "/api/files/upload/**").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll() // Cho phép truy cập file đã upload
+
                                                 // Classes
                                                 .requestMatchers(HttpMethod.GET, "/api/classes").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/**").authenticated()
@@ -97,12 +109,15 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/**").authenticated()
 
                                                 // Enrollments (students in class)
-                                                .requestMatchers(HttpMethod.GET,    "/api/classes/*/students/**").authenticated()
-                                                .requestMatchers(HttpMethod.POST,   "/api/classes/*/students").authenticated()
-                                                .requestMatchers(HttpMethod.PATCH,  "/api/classes/*/students/**").authenticated()
-                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/students/**").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/students/**")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/classes/*/students")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/classes/*/students/**")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/classes/*/students/**")
+                                                .authenticated()
 
-                                        
                                                 // Class-Lecturer assignments
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/*/lecturers")
                                                 .authenticated()
@@ -116,15 +131,24 @@ public class SecurityConfig {
                                                 // User-Role assignments
                                                 .requestMatchers(HttpMethod.GET, "/api/user-roles/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-roles/**").authenticated()
-                                                .requestMatchers(HttpMethod.DELETE, "/api/user-roles/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/user-roles/**")
+                                                .authenticated()
+
+                                                // Students (Hồ sơ học viên)
+                                                .requestMatchers(HttpMethod.POST, "/api/students").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/students").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/students/search").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/students/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/students/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/students/**").authenticated()
 
                                                 .anyRequest().authenticated())
-                                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
-               
-                                // Đăng ký filter sau BearerTokenAuthenticationFilter
-                                http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
-               
-                                return http.build();
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
+
+                // Đăng ký filter sau BearerTokenAuthenticationFilter
+                http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
+
+                return http.build();
         }
 
         @Bean

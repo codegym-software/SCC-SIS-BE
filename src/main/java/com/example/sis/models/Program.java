@@ -41,9 +41,6 @@ public class Program {
     @Column(name = "category_code", length = 50)
     private String categoryCode;
 
-    @Column(name = "level", length = 50)
-    private String level;
-
     @Column(name = "language_code", length = 10)
     private String languageCode;
 
@@ -92,9 +89,6 @@ public class Program {
 
     public String getCategoryCode() { return categoryCode; }
     public void setCategoryCode(String categoryCode) { this.categoryCode = categoryCode; }
-
-    public String getLevel() { return level; }
-    public void setLevel(String level) { this.level = level; }
 
     public String getLanguageCode() { return languageCode; }
     public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
