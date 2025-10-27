@@ -36,9 +36,13 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -222,8 +226,18 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportStudentsToExcel() throws IOException {
-        List<Student> students = studentRepo.findAllActiveStudents();
+    public byte[] exportStudentsToExcel(String status) throws IOException {
+        // Lấy danh sách students theo status (nếu có)
+        List<Student> students;
+        if (status != null && !status.isEmpty()) {
+            // Lọc theo overallStatus
+            students = studentRepo.findAllActiveStudents().stream()
+                    .filter(s -> s.getOverallStatus() != null && s.getOverallStatus().name().equals(status))
+                    .collect(Collectors.toList());
+        } else {
+            // Lấy tất cả
+            students = studentRepo.findAllActiveStudents();
+        }
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Students");
@@ -319,6 +333,74 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
+    public byte[] generateImportTemplate() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Student Import Template");
+
+            // Create header style (bold + blue background)
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            
+            // Create date cell style for example row
+            CreationHelper creationHelper = workbook.getCreationHelper();
+            CellStyle dateStyle = workbook.createCellStyle();
+            short df = creationHelper.createDataFormat().getFormat("yyyy-mm-dd");
+            dateStyle.setDataFormat(df);
+
+            // Header row - must match import column order (without Student ID)
+            Row headerRow = sheet.createRow(0);
+            String[] columns = new String[] {
+                "Full name",
+                "Email",
+                "Phone",
+                "DOB",
+                "Gender",
+                "National ID",
+                "Address",
+                "Province",
+                "District",
+                "Ward",
+                "Note"
+            };
+            
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 6000);
+            }
+
+            // Example row with sample data
+            Row exampleRow = sheet.createRow(1);
+            int c = 0;
+            exampleRow.createCell(c++).setCellValue("Nguyen Van A");
+            exampleRow.createCell(c++).setCellValue("nguyenvana@example.com");
+            exampleRow.createCell(c++).setCellValue("0901234567");
+            
+            Cell dobCell = exampleRow.createCell(c++);
+            dobCell.setCellValue("2000-01-15");
+            
+            exampleRow.createCell(c++).setCellValue("MALE");
+            exampleRow.createCell(c++).setCellValue("001234567890");
+            exampleRow.createCell(c++).setCellValue("123 ABC Street");
+            exampleRow.createCell(c++).setCellValue("Ha Noi");
+            exampleRow.createCell(c++).setCellValue("Cau Giay");
+            exampleRow.createCell(c++).setCellValue("Dich Vong");
+            exampleRow.createCell(c++).setCellValue("Sample student");
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Override
     @Transactional
     public List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException {
         List<StudentResponse> created = new ArrayList<>();
@@ -338,10 +420,8 @@ public class StudentServiceImpl implements StudentService {
                 if (row == null) continue;
 
                 try {
-                    // Read cells by column index consistent with export header
+                    // Read cells by column index - starts from col 0 (no Student ID in template)
                     int c = 0;
-                    // Skip Student ID col (col 0)
-                    Cell skipId = row.getCell(c++);
 
                     String fullName = getStringCell(row.getCell(c++));
                     String email = getStringCell(row.getCell(c++));
