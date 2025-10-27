@@ -10,8 +10,14 @@ import com.example.sis.models.User;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.services.StudentService;
+import com.example.sis.keycloak.KeycloakAdminClient;
+import com.example.sis.models.Role;
+import com.example.sis.models.UserRole;
+import com.example.sis.repositories.RoleRepository;
+import com.example.sis.repositories.UserRoleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +28,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -42,19 +49,35 @@ public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepo;
     private final UserRepository userRepo;
+    private final KeycloakAdminClient kcAdmin;
+    private final RoleRepository roleRepo;
+    private final UserRoleRepository userRoleRepo;
 
-    public StudentServiceImpl(StudentRepository studentRepo, UserRepository userRepo) {
+    @Value("${keycloak.admin.default-temp-password:Team5@12345}")
+    private String defaultTempPassword;
+
+    public StudentServiceImpl(StudentRepository studentRepo, 
+                             UserRepository userRepo,
+                             KeycloakAdminClient kcAdmin,
+                             RoleRepository roleRepo,
+                             UserRoleRepository userRoleRepo) {
         this.studentRepo = studentRepo;
         this.userRepo = userRepo;
+        this.kcAdmin = kcAdmin;
+        this.roleRepo = roleRepo;
+        this.userRoleRepo = userRoleRepo;
     }
 
     @Override
     @Transactional
     public StudentResponse createStudent(CreateStudentRequest request, Integer createdByUserId) {
 
-        // 1. Validate email không trùng
+        // 1. Validate email không trùng (cả students và users)
         if (studentRepo.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống");
+            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống học viên");
+        }
+        if (userRepo.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống người dùng");
         }
 
         // 2. Tạo Student entity
@@ -90,12 +113,102 @@ public class StudentServiceImpl implements StudentService {
             }
         }
 
-        // 3. Lưu vào database
-        student = studentRepo.save(student);
-        log.info("✅ Đã tạo hồ sơ học viên - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+        // ========== TẠO TÀI KHOẢN USER + KEYCLOAK ==========
+        try {
+            log.info("🔐 Bắt đầu tạo tài khoản đăng nhập cho học viên: {}", request.getEmail());
 
-        // 4. Trả về response
+            // 3. Tạo user trên Keycloak
+            String username = request.getEmail(); // Dùng email làm username
+            String[] names = splitName(request.getFullName());
+            String keycloakUserId = kcAdmin.createUser(
+                username, 
+                request.getEmail(), 
+                names[0],  // firstName
+                names[1],  // lastName
+                true       // enabled
+            );
+            
+            log.info("✅ Đã tạo user trên Keycloak - ID: {}", keycloakUserId);
+
+            // 4. Set mật khẩu tạm
+            if (defaultTempPassword != null && !defaultTempPassword.isBlank()) {
+                try {
+                    kcAdmin.setTemporaryPassword(keycloakUserId, defaultTempPassword, true);
+                    log.info("✅ Đã set mật khẩu tạm cho user: {}", keycloakUserId);
+                } catch (Exception pwEx) {
+                    log.warn("⚠️ Không set được mật khẩu tạm: {}", pwEx.getMessage());
+                }
+            }
+
+            // 5. Tạo User entity trong DB
+            User user = new User();
+            user.setFullName(request.getFullName());
+            user.setEmail(request.getEmail());
+            user.setPhone(request.getPhone());
+            user.setKeycloakUserId(keycloakUserId);
+            user.setDob(request.getDob());
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                user.setGender(GenderType.valueOf(request.getGender().toUpperCase()));
+            }
+            user.setNationalIdNo(request.getNationalIdNo());
+            user.setAddressLine(request.getAddressLine());
+            user.setProvince(request.getProvince());
+            user.setDistrict(request.getDistrict());
+            user.setWard(request.getWard());
+            user.setActive(true);
+            
+            user = userRepo.save(user);
+            log.info("✅ Đã tạo User trong DB - User ID: {}", user.getUserId());
+
+            // 6. Gán role STUDENT cho user
+            Optional<Integer> studentRoleIdOpt = roleRepo.findIdByCode("STUDENT");
+            if (studentRoleIdOpt.isPresent()) {
+                Role studentRole = roleRepo.findById(studentRoleIdOpt.get()).orElse(null);
+                if (studentRole != null) {
+                    UserRole userRole = new UserRole();
+                    userRole.setUser(user);
+                    userRole.setRole(studentRole);
+                    userRole.setCenter(null); // STUDENT role không cần center
+                    userRole.setAssignedAt(java.time.LocalDateTime.now());
+                    userRoleRepo.save(userRole);
+                    log.info("✅ Đã gán role STUDENT cho User ID: {}", user.getUserId());
+                } else {
+                    log.warn("⚠️ Không tìm thấy role STUDENT để gán");
+                }
+            } else {
+                log.warn("⚠️ Không tìm thấy role code STUDENT trong hệ thống");
+            }
+
+            // 7. Liên kết Student với User
+            student.setUser(user);
+            log.info("✅ Đã liên kết Student với User account");
+
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi tạo tài khoản user cho học viên: {}", e.getMessage(), e);
+            throw new IllegalStateException("Không thể tạo tài khoản đăng nhập cho học viên: " + e.getMessage());
+        }
+        // ========== KẾT THÚC TẠO TÀI KHOẢN ==========
+
+        // 8. Lưu Student vào database
+        student = studentRepo.save(student);
+        log.info("✅ Đã tạo hồ sơ học viên - Student ID: {} - {} (User ID: {})", 
+            student.getStudentId(), student.getFullName(), 
+            student.getUser() != null ? student.getUser().getUserId() : "N/A");
+
+        // 9. Trả về response
         return toResponse(student);
+    }
+
+    /**
+     * Helper method: Tách tên thành firstName và lastName
+     */
+    private String[] splitName(String fullName) {
+        if (fullName == null || fullName.isBlank()) return new String[]{"", ""};
+        String[] parts = fullName.trim().split("\\s+");
+        if (parts.length == 1) return new String[]{parts[0], ""};
+        String lastName = parts[parts.length - 1];
+        String firstName = String.join(" ", java.util.Arrays.copyOf(parts, parts.length - 1));
+        return new String[]{firstName, lastName};
     }
 
     @Override
@@ -464,6 +577,7 @@ public class StudentServiceImpl implements StudentService {
         response.setWard(student.getWard());
         response.setNote(student.getNote());
         response.setOverallStatus(student.getOverallStatus().name());
+        response.setUserId(student.getUser() != null ? student.getUser().getUserId() : null);
         response.setCreatedAt(student.getCreatedAt());
         response.setUpdatedAt(student.getUpdatedAt());
         return response;

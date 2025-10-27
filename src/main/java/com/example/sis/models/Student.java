@@ -70,6 +70,11 @@ public class Student {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
+    // Liên kết với tài khoản User để đăng nhập hệ thống
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_students_user"))
+    private User user;
+
     // Audit (FK → users.user_id) — LAZY để list nhanh
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", foreignKey = @ForeignKey(name = "fk_students_created_by"))
@@ -137,4 +142,6 @@ public class Student {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }
