@@ -43,8 +43,16 @@ public interface StudentService {
      */
     List<StudentResponse> searchStudents(String keyword);
 
-    /** Export all students to an Excel (.xlsx) file as bytes */
-    byte[] exportStudentsToExcel() throws IOException;
+    /**
+     * Export students to an Excel (.xlsx) file as bytes
+     * @param status (Optional) Filter by status: STUDYING, GRADUATED, SUSPENDED, ON_LEAVE
+     */
+    byte[] exportStudentsToExcel(String status) throws IOException;
+
+    /**
+     * Generate Excel template for student import
+     */
+    byte[] generateImportTemplate() throws IOException;
 
     /**
      * Import students from uploaded Excel file. Returns list of created/parsed StudentResponse.
