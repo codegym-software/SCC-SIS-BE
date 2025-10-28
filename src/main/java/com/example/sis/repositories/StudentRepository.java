@@ -41,4 +41,10 @@ public interface StudentRepository extends JpaRepository<Student, Integer> {
    */
   @Query("SELECT s FROM Student s WHERE s.deletedAt IS NULL ORDER BY s.createdAt DESC")
   List<Student> findAllActiveStudents();
+
+  /**
+   * Tìm studentId từ userId
+   */
+  @Query("SELECT s.studentId FROM Student s WHERE s.user.userId = :userId AND s.deletedAt IS NULL")
+  Integer findStudentIdByUserId(@Param("userId") Integer userId);
 }
