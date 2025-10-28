@@ -150,6 +150,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PUT, "/api/students/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/students/**").authenticated()
 
+                                                // Attendance
+                                                .requestMatchers(HttpMethod.GET, "/api/attendance-schedules").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/attendance-sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/attendance-sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/attendance-sessions/**").authenticated()
+
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
