@@ -128,6 +128,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers/*")
                                                 .authenticated()
 
+                                                // Student Classes
+                                                .requestMatchers(HttpMethod.GET, "/api/students/my-classes")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/students/*/classes")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/lecturers/*/classes")
+                                                .authenticated()
+
                                                 // User-Role assignments
                                                 .requestMatchers(HttpMethod.GET, "/api/user-roles/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-roles/**").authenticated()

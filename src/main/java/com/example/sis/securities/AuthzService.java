@@ -58,6 +58,13 @@ public class AuthzService {
         return hasRole(authentication, "SUPER_ADMIN");
     }
 
+    /** Có bất kỳ role academic nào (ACADEMIC_STAFF hoặc CENTER_MANAGER) không? */
+    public boolean hasAnyAcademicRole(Authentication authentication) {
+        String sub = getSub(authentication);
+        if (sub == null) return false;
+        return hasRole(authentication, "ACADEMIC_STAFF") || hasRole(authentication, "CENTER_MANAGER");
+    }
+
     /** Kiểm tra xem user hiện tại có phải là userId được truyền vào không */
     public boolean isOwnProfile(Authentication authentication, Integer userId) {
         if (userId == null) return false;
