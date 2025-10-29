@@ -99,4 +99,9 @@ public class ClassTeacher {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    // Helper getter để JPQL query có thể truy cập teacher_id trực tiếp
+    public Integer getTeacherId() {
+        return teacher != null ? teacher.getUserId() : null;
+    }
 }
