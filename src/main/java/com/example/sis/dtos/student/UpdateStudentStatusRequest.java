@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 public class UpdateStudentStatusRequest {
 
     @NotBlank(message = "Trạng thái không được để trống")
-    private String status; // ACTIVE, INACTIVE, GRADUATED, SUSPENDED
+    private String status; // PENDING, ACTIVE, DROPPED, GRADUATED
 
     // Getters & Setters
     public String getStatus() {

@@ -98,6 +98,20 @@
 				<!-- Thêm version nếu IDE vẫn báo đỏ -->
 				<version>${project.parent.version}</version>
 			</plugin>
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>11.7.2</version>
+				<configuration>
+					<url>jdbc:mysql://localhost:3307/sis?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC</url>
+					<user>root</user>
+					<password>123456</password>
+					<locations>
+						<location>classpath:db/migration</location>
+					</locations>
+					<outOfOrder>true</outOfOrder>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>

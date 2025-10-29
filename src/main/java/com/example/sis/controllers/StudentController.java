@@ -2,6 +2,7 @@
 
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
+import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 import com.example.sis.dtos.student.UpdateStudentStatusRequest;
 import com.example.sis.repositories.UserRoleRepository;
@@ -244,6 +245,34 @@ public class StudentController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+    }
+
+    /**
+     * Lấy thông tin chi tiết học viên với enrollments theo ID
+     * - Super Admin: có thể xem
+     * - Academic Staff: có thể xem
+     */
+    @GetMapping("/{id}/enrollments")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<StudentWithEnrollmentsResponse> getStudentWithEnrollments(@PathVariable Integer id) {
+        try {
+            StudentWithEnrollmentsResponse response = studentService.getStudentWithEnrollmentsById(id);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Lấy danh sách tất cả học viên với enrollments chi tiết
+     * - Super Admin: có thể xem
+     * - Academic Staff: có thể xem
+     */
+    @GetMapping("/with-enrollments")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<List<StudentWithEnrollmentsResponse>> getAllStudentsWithEnrollments() {
+        List<StudentWithEnrollmentsResponse> students = studentService.getAllStudentsWithEnrollments();
+        return ResponseEntity.ok(students);
     }
 
     /**
