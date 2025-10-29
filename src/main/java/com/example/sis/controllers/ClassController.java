@@ -107,16 +107,30 @@ public class ClassController {
 
     /**
      * Lấy lớp học theo ID
+     * - Super Admin: xem tất cả
+     * - Academic Staff: xem lớp trong trung tâm của mình
+     * - Lecturer: xem lớp được phân công
      */
     @GetMapping("/{id}")
     public ResponseEntity<ClassResponse> getClassById(@PathVariable Integer id, Authentication authentication) {
         ClassResponse classResponse = classService.getClassById(id);
+        Integer currentUserId = getCurrentUserId(authentication);
 
         // Kiểm tra quyền truy cập
         if (!isCurrentUserSuperAdmin(authentication)) {
-            Integer userCenterId = getCurrentUserCenterId(authentication);
-            if (userCenterId == null || !userCenterId.equals(classResponse.getCenterId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            // Kiểm tra nếu là giảng viên
+            if (isCurrentUserLecturer(authentication)) {
+                // Giảng viên chỉ xem được lớp mà họ được phân công
+                boolean isAssigned = classService.isLecturerAssignedToClass(currentUserId, id);
+                if (!isAssigned) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            } else {
+                // Academic Staff chỉ xem lớp trong trung tâm của mình
+                Integer userCenterId = getCurrentUserCenterId(authentication);
+                if (userCenterId == null || !userCenterId.equals(classResponse.getCenterId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
             }
         }
 
@@ -202,6 +216,17 @@ public class ClassController {
     }
 
     /**
+     * Kiểm tra user hiện tại có phải Lecturer không
+     */
+    private boolean isCurrentUserLecturer(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String sub = jwt.getClaimAsString("sub");
+            return userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(sub, "LECTURER");
+        }
+        return false;
+    }
+
+    /**
      * Lấy Center ID của user hiện tại (dành cho Academic Staff/Center Manager)
      */
     private Integer getCurrentUserCenterId(Authentication authentication) {
@@ -210,5 +235,21 @@ public class ClassController {
             return userRoleRepository.findCenterIdByKeycloakUserId(sub);
         }
         return null;
+    }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên được phân công
+     * Chỉ giảng viên mới được gọi endpoint này
+     */
+    @GetMapping("/my-classes")
+    @PreAuthorize("@authz.hasRole(authentication, 'LECTURER')")
+    public ResponseEntity<List<ClassResponse>> getMyClasses(Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<ClassResponse> classes = classService.getClassesByLecturer(currentUserId);
+        return ResponseEntity.ok(classes);
     }
 }

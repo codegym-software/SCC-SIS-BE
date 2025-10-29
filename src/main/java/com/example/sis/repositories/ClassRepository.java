@@ -101,4 +101,26 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Integer> {
         """)
     Boolean isEnrollable(@Param("classId") Integer classId);
 
+    /**
+     * Lấy danh sách lớp học mà giảng viên được phân công
+     * Lọc các assignment đang hiệu lực (end_date IS NULL hoặc end_date >= ngày hiện tại)
+     */
+    @Query("SELECT DISTINCT c FROM ClassEntity c " +
+            "JOIN c.classTeachers ct " +
+            "WHERE ct.teacher.userId = :lecturerId " +
+            "AND (ct.endDate IS NULL OR ct.endDate >= CURRENT_DATE) " +
+            "AND c.deletedAt IS NULL " +
+            "ORDER BY c.startDate DESC, c.classId DESC")
+    List<ClassEntity> findClassesByLecturerId(@Param("lecturerId") Integer lecturerId);
+
+    /**
+     * Kiểm tra giảng viên có được phân công vào lớp không (và còn hiệu lực)
+     */
+    @Query("SELECT COUNT(ct) > 0 FROM ClassTeacher ct " +
+            "WHERE ct.teacher.userId = :lecturerId " +
+            "AND ct.classEntity.classId = :classId " +
+            "AND (ct.endDate IS NULL OR ct.endDate >= CURRENT_DATE)")
+    boolean isLecturerAssignedToClass(@Param("lecturerId") Integer lecturerId, 
+                                      @Param("classId") Integer classId);
+
 }

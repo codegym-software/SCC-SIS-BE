@@ -477,4 +477,26 @@ public class ClassService {
                 return dayOfWeek.name();
         }
     }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên được phân công
+     * @param lecturerId ID của giảng viên
+     * @return Danh sách lớp học
+     */
+    public List<ClassResponse> getClassesByLecturer(Integer lecturerId) {
+        List<ClassEntity> classes = classRepository.findClassesByLecturerId(lecturerId);
+        return classes.stream()
+                .map(this::convertToClassResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Kiểm tra giảng viên có được phân công vào lớp không
+     * @param lecturerId ID của giảng viên
+     * @param classId ID của lớp học
+     * @return true nếu giảng viên được phân công và còn hiệu lực
+     */
+    public boolean isLecturerAssignedToClass(Integer lecturerId, Integer classId) {
+        return classRepository.isLecturerAssignedToClass(lecturerId, classId);
+    }
 }
