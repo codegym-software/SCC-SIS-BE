@@ -226,6 +226,19 @@ public class ModuleServiceImpl implements ModuleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ModuleResponse> getModulesBySemester(Integer programId, Integer semester) {
+        // Validate program tồn tại
+        programRepository.findById(programId)
+                .orElseThrow(() -> new NotFoundException("Program không tồn tại với ID: " + programId));
+
+        List<Module> modules = moduleRepository.findBySemesterAndProgramId(semester, programId);
+        return modules.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public List<ModuleResponse> reorderModule(Integer moduleId, Integer newSequenceOrder, Integer updatedBy) {
         // Tìm module cần di chuyển
@@ -235,6 +248,11 @@ public class ModuleServiceImpl implements ModuleService {
         // Kiểm tra module đã bị xóa chưa
         if (moduleToMove.getDeletedAt() != null) {
             throw new ConflictException("Module đã bị xóa, không thể sắp xếp lại");
+        }
+
+        // 🔒 KIỂM TRA: Module BẮT BUỘC không được phép sắp xếp
+        if (moduleToMove.getIsMandatory()) {
+            throw new ConflictException("Module BẮT BUỘC không thể sắp xếp lại. Chỉ module TỰ CHỌN mới được phép thay đổi vị trí.");
         }
 
         Integer programId = moduleToMove.getProgramId();
@@ -275,6 +293,29 @@ public class ModuleServiceImpl implements ModuleService {
                     minSequenceInSemester, maxSequenceInSemester
                 )
             );
+        }
+
+        // 🔒 KIỂM TRA: Không cho phép di chuyển qua module BẮT BUỘC
+        int start = Math.min(currentSequenceOrder, newSequenceOrder);
+        int end = Math.max(currentSequenceOrder, newSequenceOrder);
+        
+        for (Module module : modulesInSameSemester) {
+            // Bỏ qua module đang di chuyển và module ở vị trí hiện tại/đích
+            if (module.getModuleId().equals(moduleId)) {
+                continue;
+            }
+            
+            int moduleSeqOrder = module.getSequenceOrder();
+            // Kiểm tra xem có module BẮT BUỘC nào trong khoảng di chuyển không
+            if (module.getIsMandatory() && moduleSeqOrder >= start && moduleSeqOrder <= end) {
+                throw new ConflictException(
+                    String.format(
+                        "Không thể di chuyển qua module BẮT BUỘC '%s' (vị trí %d)! " +
+                        "Các module bắt buộc có vị trí cố định và không thể bị thay đổi.",
+                        module.getName(), moduleSeqOrder
+                    )
+                );
+            }
         }
 
         // Lấy user để set updatedBy
