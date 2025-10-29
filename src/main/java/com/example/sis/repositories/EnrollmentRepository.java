@@ -121,10 +121,4 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
         GROUP BY e.status
         """)
     List<EnrollmentStatusCount> countByStatusInClass(Integer classId);
-    
-    // Methods for StatusManagementService
-    List<Enrollment> findByClassEntity_ClassIdAndStatusAndRevokedAtIsNull(
-            Integer classId, EnrollmentStatus status);
-    
-    List<Enrollment> findByStudent_StudentIdAndRevokedAtIsNull(Integer studentId);
 }

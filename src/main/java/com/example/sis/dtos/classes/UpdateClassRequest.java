@@ -12,6 +12,7 @@ import java.util.List;
 
 public class UpdateClassRequest {
 
+    @NotBlank(message = "Tên lớp không được để trống")
     @Size(max = 255, message = "Tên lớp không được vượt quá 255 ký tự")
     private String name;
 
