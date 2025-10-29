@@ -6,6 +6,7 @@ import com.example.sis.enums.StudyTime;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -76,6 +77,9 @@ public class ClassEntity {
         @ManyToOne
         @JoinColumn(name = "updated_by", foreignKey = @ForeignKey(name = "fk_classes_updated_by"))
         private User updatedBy;
+
+        @OneToMany(mappedBy = "classEntity", fetch = FetchType.LAZY)
+        private List<ClassTeacher> classTeachers = new ArrayList<>();
 
         public enum ClassStatus {
                 PLANNED, ONGOING, FINISHED, CANCELLED
@@ -216,5 +220,13 @@ public class ClassEntity {
 
         public void setUpdatedBy(User updatedBy) {
                 this.updatedBy = updatedBy;
+        }
+
+        public List<ClassTeacher> getClassTeachers() {
+                return classTeachers;
+        }
+
+        public void setClassTeachers(List<ClassTeacher> classTeachers) {
+                this.classTeachers = classTeachers;
         }
 }
