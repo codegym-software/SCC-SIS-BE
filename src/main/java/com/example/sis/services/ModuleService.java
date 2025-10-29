@@ -120,6 +120,14 @@ public interface ModuleService {
      * @return ModuleResponse
      */
     ModuleResponse removeResourceByUrl(Integer moduleId, String resourceUrl, Integer updatedBy);
+
+    /**
+     * Lấy modules theo semester của program
+     * @param programId ID của program
+     * @param semester Số học kỳ (1, 2, 3, 4...)
+     * @return Danh sách modules trong semester đó
+     */
+    List<ModuleResponse> getModulesBySemester(Integer programId, Integer semester);
 }
 
 

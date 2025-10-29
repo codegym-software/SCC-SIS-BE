@@ -62,7 +62,8 @@ public class ModuleController {
             @RequestParam(required = true) Integer programId,
             @RequestParam(required = false) String level,
             @RequestParam(required = false) Boolean mandatoryOnly,
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer semester) {
         
         List<ModuleResponse> modules;
 
@@ -75,6 +76,9 @@ public class ModuleController {
         } else if (mandatoryOnly != null && mandatoryOnly) {
             // Chỉ lấy modules bắt buộc
             modules = moduleService.getMandatoryModules(programId);
+        } else if (semester != null) {
+            // Lọc theo semester
+            modules = moduleService.getModulesBySemester(programId, semester);
         } else {
             // Lấy tất cả
             modules = moduleService.getModulesByProgramId(programId);
