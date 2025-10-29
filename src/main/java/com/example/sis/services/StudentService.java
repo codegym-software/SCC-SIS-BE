@@ -2,6 +2,7 @@ package com.example.sis.services;
 
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
+import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 
 import java.util.List;
@@ -27,6 +28,16 @@ public interface StudentService {
      * Lấy thông tin chi tiết học viên theo ID
      */
     StudentResponse getStudentById(Integer studentId);
+
+    /**
+     * Lấy thông tin chi tiết học viên với enrollments theo ID
+     */
+    StudentWithEnrollmentsResponse getStudentWithEnrollmentsById(Integer studentId);
+
+    /**
+     * Lấy danh sách tất cả học viên với enrollments chi tiết
+     */
+    List<StudentWithEnrollmentsResponse> getAllStudentsWithEnrollments();
 
     /**
      * Cập nhật thông tin học viên

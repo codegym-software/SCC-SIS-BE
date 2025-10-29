@@ -2,6 +2,7 @@ package com.example.sis.services.impl;
 
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
+import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 import com.example.sis.enums.GenderType;
 import com.example.sis.enums.OverallStatus;
@@ -603,7 +604,7 @@ public class StudentServiceImpl implements StudentService {
         try {
             newStatus = OverallStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận: ACTIVE, INACTIVE, GRADUATED, SUSPENDED");
+            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận: PENDING, ACTIVE, DROPPED, GRADUATED");
         }
 
         // 3. Cập nhật trạng thái
@@ -661,5 +662,76 @@ public class StudentServiceImpl implements StudentService {
         response.setCreatedAt(student.getCreatedAt());
         response.setUpdatedAt(student.getUpdatedAt());
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentWithEnrollmentsResponse getStudentWithEnrollmentsById(Integer studentId) {
+        log.info("📋 Lấy thông tin học viên với enrollments ID: {}", studentId);
+
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy học viên với ID: " + studentId));
+
+        return toStudentWithEnrollmentsResponse(student);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentWithEnrollmentsResponse> getAllStudentsWithEnrollments() {
+        log.info("📋 Lấy danh sách tất cả học viên với enrollments");
+
+        return studentRepo.findAll().stream()
+                .map(this::toStudentWithEnrollmentsResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert Student entity to StudentWithEnrollmentsResponse
+     */
+    private StudentWithEnrollmentsResponse toStudentWithEnrollmentsResponse(Student student) {
+        StudentWithEnrollmentsResponse response = new StudentWithEnrollmentsResponse();
+        
+        // Basic student info
+        response.setStudentId(student.getStudentId());
+        response.setFullName(student.getFullName());
+        response.setEmail(student.getEmail());
+        response.setPhone(student.getPhone());
+        response.setDob(student.getDob());
+        response.setGender(student.getGender() != null ? student.getGender().name() : null);
+        response.setNationalIdNo(student.getNationalIdNo());
+        response.setAddressLine(student.getAddressLine());
+        response.setProvince(student.getProvince());
+        response.setDistrict(student.getDistrict());
+        response.setWard(student.getWard());
+        response.setNote(student.getNote());
+        response.setOverallStatus(student.getOverallStatus().name());
+        response.setUserId(student.getUser() != null ? student.getUser().getUserId() : null);
+        response.setCreatedAt(student.getCreatedAt());
+        response.setUpdatedAt(student.getUpdatedAt());
+
+        // Load enrollments using native query or repository method
+        List<StudentWithEnrollmentsResponse.EnrollmentDetail> enrollments = 
+            studentRepo.findEnrollmentsByStudentId(student.getStudentId()).stream()
+                .map(this::mapToEnrollmentDetail)
+                .collect(Collectors.toList());
+        
+        response.setEnrollments(enrollments);
+        return response;
+    }
+
+    /**
+     * Map enrollment data to EnrollmentDetail
+     */
+    private StudentWithEnrollmentsResponse.EnrollmentDetail mapToEnrollmentDetail(Object[] enrollmentData) {
+        return new StudentWithEnrollmentsResponse.EnrollmentDetail(
+            (Integer) enrollmentData[0], // enrollmentId
+            (Integer) enrollmentData[1], // classId
+            (String) enrollmentData[2],  // className
+            (String) enrollmentData[3],  // programName
+            (String) enrollmentData[4],  // status
+            (LocalDate) enrollmentData[5], // enrolledAt
+            (LocalDate) enrollmentData[6], // leftAt
+            (String) enrollmentData[7]   // enrollmentNote
+        );
     }
 }

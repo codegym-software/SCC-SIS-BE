@@ -47,4 +47,16 @@ public interface StudentRepository extends JpaRepository<Student, Integer> {
    */
   @Query("SELECT s.studentId FROM Student s WHERE s.user.userId = :userId AND s.deletedAt IS NULL")
   Integer findStudentIdByUserId(@Param("userId") Integer userId);
+
+  /**
+   * Lấy thông tin enrollments của học viên với chi tiết lớp và chương trình
+   */
+  @Query("""
+      SELECT e.enrollmentId, e.classEntity.classId, c.name, c.program.name, CAST(e.status AS string), e.enrolledAt, e.leftAt, e.note
+      FROM Enrollment e
+      JOIN e.classEntity c
+      WHERE e.student.studentId = :studentId AND e.revokedAt IS NULL
+      ORDER BY e.enrolledAt DESC
+      """)
+  List<Object[]> findEnrollmentsByStudentId(@Param("studentId") Integer studentId);
 }
