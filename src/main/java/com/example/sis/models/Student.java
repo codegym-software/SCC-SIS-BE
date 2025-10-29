@@ -65,7 +65,7 @@ public class Student {
     /** DB: ENUM UPPERCASE */
     @Enumerated(EnumType.STRING)
     @Column(name = "overall_status", length = 50, nullable = false)
-    private OverallStatus overallStatus = OverallStatus.ACTIVE;
+    private OverallStatus overallStatus = OverallStatus.PENDING;
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
