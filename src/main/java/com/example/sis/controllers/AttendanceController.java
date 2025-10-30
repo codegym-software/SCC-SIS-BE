@@ -181,6 +181,28 @@ public class AttendanceController {
     }
 
     /**
+     * GET /api/students/{student_id}/classes/{class_id}/attendance
+     * Lấy lịch sử điểm danh của học viên trong một lớp
+     * - Super Admin: có thể xem
+     * - Academic Staff: có thể xem lớp trong trung tâm
+     * - Lecturer: có thể xem lớp mình dạy
+     */
+    @GetMapping("/students/{student_id}/classes/{class_id}/attendance")
+    public ResponseEntity<StudentAttendanceHistoryResponse> getStudentAttendanceHistory(
+            @PathVariable("student_id") Integer studentId,
+            @PathVariable("class_id") Integer classId) {
+        try {
+            StudentAttendanceHistoryResponse response = attendanceService.getStudentAttendanceHistory(studentId, classId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // Log error for debugging
+            e.printStackTrace();
+            System.err.println("Error fetching student attendance history: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
      * Helper methods
      */
     private Integer getCurrentUserId(Authentication authentication) {
