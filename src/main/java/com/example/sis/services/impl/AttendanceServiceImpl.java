@@ -243,8 +243,22 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public List<AttendanceSessionSummaryResponse> getSessionsByClass(Integer classId) {
+        // Fetch sessions without loading relationships
         List<AttendanceSession> sessions = sessionRepo.findByClassEntity_ClassIdAndDeletedFalseOrderByAttendanceDateDesc(classId);
-        return sessions.stream().map(this::toSummaryResponse).toList();
+        
+        // Map to DTO immediately to avoid lazy loading issues
+        List<AttendanceSessionSummaryResponse> result = new ArrayList<>();
+        for (AttendanceSession session : sessions) {
+            AttendanceSessionSummaryResponse response = new AttendanceSessionSummaryResponse();
+            response.setSessionId(session.getSessionId());
+            response.setAttendanceDate(session.getAttendanceDate());
+            response.setTotalStudents(session.getTotalStudents());
+            response.setPresentCount(session.getPresentCount());
+            response.setAbsentCount(session.getAbsentCount());
+            result.add(response);
+        }
+        
+        return result;
     }
 
     @Override
