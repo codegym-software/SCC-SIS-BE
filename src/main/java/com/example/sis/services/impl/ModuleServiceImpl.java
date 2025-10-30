@@ -240,7 +240,7 @@ public class ModuleServiceImpl implements ModuleService {
 
     @Override
     @Transactional
-    public List<ModuleResponse> reorderModule(Integer moduleId, Integer newSequenceOrder, Integer updatedBy) {
+    public List<ModuleResponse> reorderModule(Integer moduleId, Integer newSequenceOrder, Integer updatedBy, boolean isAdminOrSA) {
         // Tìm module cần di chuyển
         Module moduleToMove = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new NotFoundException("Module không tồn tại với ID: " + moduleId));
@@ -250,8 +250,8 @@ public class ModuleServiceImpl implements ModuleService {
             throw new ConflictException("Module đã bị xóa, không thể sắp xếp lại");
         }
 
-        // 🔒 KIỂM TRA: Module BẮT BUỘC không được phép sắp xếp
-        if (moduleToMove.getIsMandatory()) {
+        // 🔒 KIỂM TRA: Nếu KHÔNG phải ADMIN/SA, thì Module BẮT BUỘC không được phép sắp xếp
+        if (!isAdminOrSA && moduleToMove.getIsMandatory()) {
             throw new ConflictException("Module BẮT BUỘC không thể sắp xếp lại. Chỉ module TỰ CHỌN mới được phép thay đổi vị trí.");
         }
 
@@ -295,26 +295,28 @@ public class ModuleServiceImpl implements ModuleService {
             );
         }
 
-        // 🔒 KIỂM TRA: Không cho phép di chuyển qua module BẮT BUỘC
-        int start = Math.min(currentSequenceOrder, newSequenceOrder);
-        int end = Math.max(currentSequenceOrder, newSequenceOrder);
-        
-        for (Module module : modulesInSameSemester) {
-            // Bỏ qua module đang di chuyển và module ở vị trí hiện tại/đích
-            if (module.getModuleId().equals(moduleId)) {
-                continue;
-            }
+        // 🔒 KIỂM TRA: Nếu KHÔNG phải ADMIN/SA, không cho phép di chuyển qua module BẮT BUỘC
+        if (!isAdminOrSA) {
+            int start = Math.min(currentSequenceOrder, newSequenceOrder);
+            int end = Math.max(currentSequenceOrder, newSequenceOrder);
             
-            int moduleSeqOrder = module.getSequenceOrder();
-            // Kiểm tra xem có module BẮT BUỘC nào trong khoảng di chuyển không
-            if (module.getIsMandatory() && moduleSeqOrder >= start && moduleSeqOrder <= end) {
-                throw new ConflictException(
-                    String.format(
-                        "Không thể di chuyển qua module BẮT BUỘC '%s' (vị trí %d)! " +
-                        "Các module bắt buộc có vị trí cố định và không thể bị thay đổi.",
-                        module.getName(), moduleSeqOrder
-                    )
-                );
+            for (Module module : modulesInSameSemester) {
+                // Bỏ qua module đang di chuyển và module ở vị trí hiện tại/đích
+                if (module.getModuleId().equals(moduleId)) {
+                    continue;
+                }
+                
+                int moduleSeqOrder = module.getSequenceOrder();
+                // Kiểm tra xem có module BẮT BUỘC nào trong khoảng di chuyển không
+                if (module.getIsMandatory() && moduleSeqOrder >= start && moduleSeqOrder <= end) {
+                    throw new ConflictException(
+                        String.format(
+                            "Không thể di chuyển qua module BẮT BUỘC '%s' (vị trí %d)! " +
+                            "Các module bắt buộc có vị trí cố định và không thể bị thay đổi.",
+                            module.getName(), moduleSeqOrder
+                        )
+                    );
+                }
             }
         }
 
@@ -395,10 +397,11 @@ public class ModuleServiceImpl implements ModuleService {
      * @param currentSequenceOrder Vị trí hiện tại của module
      * @param newSequenceOrder Vị trí mới
      * @param updatedBy User ID người cập nhật
+     * @param isAdminOrSA true nếu người dùng là ADMIN/SA
      * @return Danh sách modules sau khi sắp xếp lại
      */
     @Override
-    public List<ModuleResponse> reorderModuleBySequenceOrder(Integer programId, Integer currentSequenceOrder, Integer newSequenceOrder, Integer updatedBy) {
+    public List<ModuleResponse> reorderModuleBySequenceOrder(Integer programId, Integer currentSequenceOrder, Integer newSequenceOrder, Integer updatedBy, boolean isAdminOrSA) {
         // Kiểm tra programId
         if (programId == null || programId <= 0) {
             throw new BadRequestException("Program ID không hợp lệ");
@@ -415,8 +418,8 @@ public class ModuleServiceImpl implements ModuleService {
             throw new ConflictException("Module đã bị xóa, không thể sắp xếp lại");
         }
 
-        // Gọi lại method reorderModule cũ với moduleId
-        return reorderModule(moduleToMove.getModuleId(), newSequenceOrder, updatedBy);
+        // Gọi lại method reorderModule cũ với moduleId và role
+        return reorderModule(moduleToMove.getModuleId(), newSequenceOrder, updatedBy, isAdminOrSA);
     }
 
     /**
@@ -430,14 +433,30 @@ public class ModuleServiceImpl implements ModuleService {
      * 
      * ⚠️ LƯU Ý: Sau khi tạo, semester CỐ ĐỊNH và KHÔNG thay đổi khi reorder
      */
+    /**
+     * Tính semester TỰ ĐỘNG từ sequenceOrder
+     * 
+     * QUY TẮC: Cứ 6 modules liên tiếp = 1 semester
+     * - Modules 1-6   → Semester 1
+     * - Modules 7-12  → Semester 2
+     * - Modules 13-18 → Semester 3
+     * - Modules 19-24 → Semester 4
+     * - ...
+     * 
+     * CÔNG THỨC: semester = ceil(sequenceOrder / 6)
+     *           = (sequenceOrder - 1) / 6 + 1
+     */
     private Integer calculateSemesterFromSequenceOrder(Integer sequenceOrder) {
         if (sequenceOrder == null || sequenceOrder <= 0) {
             return 1; // Mặc định semester 1
         }
-        if (sequenceOrder <= 6) return 1;
-        if (sequenceOrder <= 13) return 2;
-        if (sequenceOrder <= 20) return 3;
-        return 4; // Semester 4 cho sequenceOrder > 20
+        // Công thức: (sequenceOrder - 1) / 6 + 1
+        // VD: sequenceOrder = 1  → (1-1)/6 + 1 = 0 + 1 = 1
+        //     sequenceOrder = 6  → (6-1)/6 + 1 = 0 + 1 = 1
+        //     sequenceOrder = 7  → (7-1)/6 + 1 = 1 + 1 = 2
+        //     sequenceOrder = 12 → (12-1)/6 + 1 = 1 + 1 = 2
+        //     sequenceOrder = 13 → (13-1)/6 + 1 = 2 + 1 = 3
+        return (sequenceOrder - 1) / 6 + 1;
     }
 
     /**

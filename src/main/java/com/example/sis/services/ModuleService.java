@@ -73,9 +73,10 @@ public interface ModuleService {
      * @param moduleId ID của module cần di chuyển
      * @param newSequenceOrder Vị trí mới
      * @param updatedBy User ID người cập nhật
+     * @param isAdminOrSA true nếu người dùng là ADMIN/SA (có thể sắp xếp tất cả), false nếu là Student
      * @return Danh sách modules sau khi sắp xếp lại
      */
-    List<ModuleResponse> reorderModule(Integer moduleId, Integer newSequenceOrder, Integer updatedBy);
+    List<ModuleResponse> reorderModule(Integer moduleId, Integer newSequenceOrder, Integer updatedBy, boolean isAdminOrSA);
 
     /**
      * Sắp xếp lại thứ tự module trong program (theo sequenceOrder)
@@ -83,9 +84,10 @@ public interface ModuleService {
      * @param currentSequenceOrder Vị trí hiện tại của module
      * @param newSequenceOrder Vị trí mới
      * @param updatedBy User ID người cập nhật
+     * @param isAdminOrSA true nếu người dùng là ADMIN/SA (có thể sắp xếp tất cả), false nếu là Student
      * @return Danh sách modules sau khi sắp xếp lại
      */
-    List<ModuleResponse> reorderModuleBySequenceOrder(Integer programId, Integer currentSequenceOrder, Integer newSequenceOrder, Integer updatedBy);
+    List<ModuleResponse> reorderModuleBySequenceOrder(Integer programId, Integer currentSequenceOrder, Integer newSequenceOrder, Integer updatedBy, boolean isAdminOrSA);
 
     /**
      * Tự động sắp xếp lại sequenceOrder cho tất cả modules trong program
