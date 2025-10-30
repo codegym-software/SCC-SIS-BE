@@ -83,28 +83,8 @@ CREATE INDEX idx_prereq_is_mandatory  ON module_prerequisites (is_mandatory);
 --   Module 4 (MOD004): Java Core & OOP
 --   Module 5 (MOD005): Capstone Project
 --
--- Giờ ta tạo quan hệ prerequisites giữa chúng:
-
--- MOD002 (Git & HTML/CSS) yêu cầu MOD001 (Tư duy lập trình)
-INSERT INTO module_prerequisites (module_id, prerequisite_id, is_mandatory, note)
-VALUES
-(2, 1, TRUE, 'Phải hiểu tư duy lập trình trước khi học HTML/CSS');
-
--- MOD003 (JavaScript) yêu cầu MOD002 (HTML/CSS)
-INSERT INTO module_prerequisites (module_id, prerequisite_id, is_mandatory, note)
-VALUES
-(3, 2, TRUE, 'Phải biết HTML/CSS để hiểu DOM manipulation');
-
--- MOD004 (Java Backend) yêu cầu MOD003 (JavaScript) - để hiểu programming concepts
-INSERT INTO module_prerequisites (module_id, prerequisite_id, is_mandatory, note)
-VALUES
-(4, 3, TRUE, 'Nên có nền tảng JavaScript tốt trước khi học Java');
-
--- MOD005 (Capstone Project) yêu cầu MOD003 (JavaScript) + MOD004 (Java)
-INSERT INTO module_prerequisites (module_id, prerequisite_id, is_mandatory, note)
-VALUES
-(5, 3, TRUE, 'Cần JavaScript để làm Frontend phần project'),
-(5, 4, TRUE, 'Cần Java để làm Backend phần project');
+-- REMOVED: Seed data sẽ được thêm sau thông qua admin UI hoặc API
+-- Lý do: Tránh lỗi foreign key khi modules chưa tồn tại
 
 
 -- =============================================================================

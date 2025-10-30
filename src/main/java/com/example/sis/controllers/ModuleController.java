@@ -5,6 +5,7 @@ import com.example.sis.dtos.module.ModuleResponse;
 import com.example.sis.dtos.module.ReorderModuleRequest;
 import com.example.sis.dtos.module.UpdateModuleRequest;
 import com.example.sis.repositories.UserRoleRepository;
+import com.example.sis.securities.AuthzService;
 import com.example.sis.services.ModuleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,11 +30,14 @@ public class ModuleController {
 
     private final ModuleService moduleService;
     private final UserRoleRepository userRoleRepository;
+    private final AuthzService authzService;
 
     public ModuleController(ModuleService moduleService,
-                            UserRoleRepository userRoleRepository) {
+                            UserRoleRepository userRoleRepository,
+                            AuthzService authzService) {
         this.moduleService = moduleService;
         this.userRoleRepository = userRoleRepository;
+        this.authzService = authzService;
     }
 
     /**
@@ -132,15 +136,15 @@ public class ModuleController {
      * - Khi di chuyển module từ vị trí A sang vị trí B, các module khác tự động dịch chuyển
      * 
      * Phân quyền:
-     * - Super Admin: Sắp xếp bất kỳ module nào
-     * - Training Manager: Sắp xếp modules trong center của mình
+     * - Super Admin & Training Manager: Sắp xếp TẤT CẢ modules (kể cả mandatory)
+     * - Student: CHỈ sắp xếp modules TỰ CHỌN (optional)
      * 
      * @param programId ID của program chứa module
      * @param sequenceOrder Vị trí hiện tại của module cần di chuyển
      * @param request Request body chứa newSequenceOrder
      */
     @PatchMapping("/reorder")
-    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'TRAINING_MANAGER')")
+    @PreAuthorize("isAuthenticated()")  // Cho phép tất cả user đã đăng nhập
     public ResponseEntity<List<ModuleResponse>> reorderModule(
             @RequestParam(required = true) Integer programId,
             @RequestParam(required = true) Integer sequenceOrder,
@@ -148,11 +152,18 @@ public class ModuleController {
             Authentication authentication) {
         
         Integer updatedBy = getCurrentUserId(authentication);
+        
+        // Kiểm tra role: ADMIN/SA có thể sắp xếp tất cả, Student chỉ sắp xếp optional
+        boolean isAdminOrSA = authzService.isSuperAdmin(authentication) 
+                || authzService.hasRole(authentication, "TRAINING_MANAGER")
+                || authzService.hasRole(authentication, "ACADEMIC_STAFF");
+        
         List<ModuleResponse> modules = moduleService.reorderModuleBySequenceOrder(
             programId,
             sequenceOrder,
             request.getNewSequenceOrder(), 
-            updatedBy
+            updatedBy,
+            isAdminOrSA
         );
         return ResponseEntity.ok(modules);
     }
