@@ -1,7 +1,8 @@
-package com.example.sis.controllers;
+            package com.example.sis.controllers;
 
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
+import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 import com.example.sis.dtos.student.UpdateStudentStatusRequest;
 import com.example.sis.repositories.UserRoleRepository;
@@ -76,14 +77,43 @@ public class StudentController {
 
     /**
      * Export students to Excel (.xlsx)
+     * GET /api/students/export?status={status}
+     * 
+     * @param status (Optional) Lọc theo trạng thái: STUDYING, GRADUATED, SUSPENDED, ON_LEAVE
      */
     @GetMapping("/export")
     @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
-    public ResponseEntity<byte[]> exportStudents() {
+    public ResponseEntity<byte[]> exportStudents(
+            @RequestParam(required = false) String status) {
         try {
-            byte[] data = studentService.exportStudentsToExcel();
+            byte[] data = studentService.exportStudentsToExcel(status);
 
             String filename = "students.xlsx";
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(data);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Download Excel template for student import
+     * GET /api/students/template
+     */
+    @GetMapping("/template")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<byte[]> downloadTemplate() {
+        try {
+            byte[] data = studentService.generateImportTemplate();
+
+            String filename = "student_import_template.xlsx";
             String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
 
             HttpHeaders headers = new HttpHeaders();
@@ -215,6 +245,34 @@ public class StudentController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+    }
+
+    /**
+     * Lấy thông tin chi tiết học viên với enrollments theo ID
+     * - Super Admin: có thể xem
+     * - Academic Staff: có thể xem
+     */
+    @GetMapping("/{id}/enrollments")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<StudentWithEnrollmentsResponse> getStudentWithEnrollments(@PathVariable Integer id) {
+        try {
+            StudentWithEnrollmentsResponse response = studentService.getStudentWithEnrollmentsById(id);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Lấy danh sách tất cả học viên với enrollments chi tiết
+     * - Super Admin: có thể xem
+     * - Academic Staff: có thể xem
+     */
+    @GetMapping("/with-enrollments")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<List<StudentWithEnrollmentsResponse>> getAllStudentsWithEnrollments() {
+        List<StudentWithEnrollmentsResponse> students = studentService.getAllStudentsWithEnrollments();
+        return ResponseEntity.ok(students);
     }
 
     /**

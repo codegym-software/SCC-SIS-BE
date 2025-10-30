@@ -21,6 +21,7 @@ public class StudentResponse {
     private String ward;
     private String note;
     private String overallStatus;
+    private Integer userId; // ID của tài khoản User liên kết
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -143,5 +144,13 @@ public class StudentResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Integer userId) {
+        this.userId = userId;
     }
 }

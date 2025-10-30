@@ -65,10 +65,15 @@ public class Student {
     /** DB: ENUM UPPERCASE */
     @Enumerated(EnumType.STRING)
     @Column(name = "overall_status", length = 50, nullable = false)
-    private OverallStatus overallStatus = OverallStatus.ACTIVE;
+    private OverallStatus overallStatus = OverallStatus.PENDING;
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
+
+    // Liên kết với tài khoản User để đăng nhập hệ thống
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_students_user"))
+    private User user;
 
     // Audit (FK → users.user_id) — LAZY để list nhanh
     @ManyToOne(fetch = FetchType.LAZY)
@@ -137,4 +142,6 @@ public class Student {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }

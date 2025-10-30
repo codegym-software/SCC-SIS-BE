@@ -13,6 +13,7 @@ import com.example.sis.repositories.CenterRepository;
 import com.example.sis.repositories.ClassRepository;
 import com.example.sis.repositories.ProgramRepository;
 import com.example.sis.repositories.UserRepository;
+import com.example.sis.services.StatusManagementService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +33,16 @@ public class ClassService {
     private final ProgramRepository programRepository;
     private final CenterRepository centerRepository;
     private final UserRepository userRepository;
+    private final StatusManagementService statusManagementService;
 
     public ClassService(ClassRepository classRepository, ProgramRepository programRepository,
-            CenterRepository centerRepository, UserRepository userRepository) {
+            CenterRepository centerRepository, UserRepository userRepository, 
+            StatusManagementService statusManagementService) {
         this.classRepository = classRepository;
         this.programRepository = programRepository;
         this.centerRepository = centerRepository;
         this.userRepository = userRepository;
+        this.statusManagementService = statusManagementService;
     }
 
     /**
@@ -61,9 +65,20 @@ public class ClassService {
         }
 
         // Validate dates if provided
+        LocalDate today = LocalDate.now();
         if (request.getStartDate() != null && request.getEndDate() != null) {
             if (request.getStartDate().isAfter(request.getEndDate())) {
                 throw new RuntimeException("Ngày bắt đầu không thể sau ngày kết thúc");
+            }
+            
+            // Validate startDate >= today
+            if (request.getStartDate().isBefore(today)) {
+                throw new RuntimeException("Thời gian bắt đầu phải ở tương lai (không được trước thời gian hiện tại)");
+            }
+            
+            // Validate endDate > today
+            if (!request.getEndDate().isAfter(today)) {
+                throw new RuntimeException("Thời gian kết thúc phải sau thời gian hiện tại trên máy tính");
             }
 
             // Validate study days based on date range
@@ -85,7 +100,9 @@ public class ClassService {
         classEntity.setEndDate(request.getEndDate());
         classEntity.setRoom(request.getRoom());
         classEntity.setCapacity(request.getCapacity());
-        classEntity.setStatus(ClassEntity.ClassStatus.PLANNED);
+        
+        // Status sẽ được tính tự động từ ngày bắt đầu/kết thúc
+        // Không cần set status ở đây nữa
 
         // Set study schedule
         classEntity.setStudyDays(request.getStudyDays());
@@ -95,6 +112,10 @@ public class ClassService {
         classEntity.setUpdatedAt(LocalDateTime.now());
         classEntity.setCreatedBy(creator);
         classEntity.setUpdatedBy(creator);
+
+        // Tính status tự động từ ngày và lưu vào DB
+        ClassEntity.ClassStatus calculatedStatus = calculateStatus(classEntity);
+        classEntity.setStatus(calculatedStatus);
 
         ClassEntity savedClass = classRepository.save(classEntity);
 
@@ -118,7 +139,8 @@ public class ClassService {
                 .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
 
         // Check if new name is unique within the center (excluding current class)
-        if (!existingClass.getName().equals(request.getName()) &&
+        if (request.getName() != null && 
+                !existingClass.getName().equals(request.getName()) &&
                 classRepository.existsByCenterIdAndNameExcludingId(
                         existingClass.getCenter().getCenterId(), request.getName(), classId)) {
             throw new RuntimeException("Tên lớp học đã tồn tại trong trung tâm này");
@@ -139,21 +161,51 @@ public class ClassService {
         // Get updater user
         User updater = userRepository.findById(updatedBy).orElse(null);
 
-        // Update fields
-        existingClass.setName(request.getName());
-        existingClass.setDescription(request.getDescription());
-        existingClass.setStartDate(request.getStartDate());
-        existingClass.setEndDate(request.getEndDate());
-        existingClass.setRoom(request.getRoom());
-        existingClass.setCapacity(request.getCapacity());
+        // Update fields only if provided (partial update)
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            existingClass.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            existingClass.setDescription(request.getDescription());
+        }
+        if (request.getStartDate() != null) {
+            existingClass.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            existingClass.setEndDate(request.getEndDate());
+        }
+        if (request.getRoom() != null) {
+            existingClass.setRoom(request.getRoom());
+        }
+        if (request.getCapacity() != null) {
+            existingClass.setCapacity(request.getCapacity());
+        }
 
         // Update study schedule
-        existingClass.setStudyDays(request.getStudyDays());
-        existingClass.setStudyTime(request.getStudyTime());
+        if (request.getStudyDays() != null) {
+            existingClass.setStudyDays(request.getStudyDays());
+        }
+        if (request.getStudyTime() != null) {
+            existingClass.setStudyTime(request.getStudyTime());
+        }
 
-        // Update status if provided
+        // Update status
         if (request.getStatus() != null) {
-            existingClass.setStatus(request.getStatus());
+            // Có request.getStatus() từ frontend
+            if (request.getStatus() == ClassEntity.ClassStatus.CANCELLED) {
+                // User muốn tạm dừng class - set CANCELLED
+                existingClass.setStatus(ClassEntity.ClassStatus.CANCELLED);
+            } else {
+                // User muốn set status khác - set trực tiếp (dùng cho khôi phục)
+                existingClass.setStatus(request.getStatus());
+            }
+        } else {
+            // Không có request.getStatus() - nếu hiện tại đang CANCELLED và có update khác, giữ nguyên CANCELLED
+            // Nếu không phải CANCELLED, tính status tự động từ ngày
+            if (existingClass.getStatus() != ClassEntity.ClassStatus.CANCELLED) {
+                ClassEntity.ClassStatus calculatedStatus = calculateStatus(existingClass);
+                existingClass.setStatus(calculatedStatus);
+            }
         }
 
         existingClass.setUpdatedAt(LocalDateTime.now());
@@ -231,6 +283,52 @@ public class ClassService {
     }
 
     /**
+     * Tính toán status tự động dựa trên ngày bắt đầu và kết thúc
+     * - CANCELLED: Nếu có trong DB thì giữ nguyên (chỉ có thể set manual)
+     * - PLANNED: Nếu ngày hiện tại < startDate
+     * - ONGOING: Nếu ngày hiện tại >= startDate và <= endDate
+     * - FINISHED: Nếu ngày hiện tại > endDate
+     */
+    private ClassEntity.ClassStatus calculateStatus(ClassEntity classEntity) {
+        // Nếu status là CANCELLED, giữ nguyên
+        if (classEntity.getStatus() == ClassEntity.ClassStatus.CANCELLED) {
+            return ClassEntity.ClassStatus.CANCELLED;
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = classEntity.getStartDate();
+        LocalDate endDate = classEntity.getEndDate();
+
+        // Nếu không có ngày, trả về PLANNED làm mặc định
+        if (startDate == null || endDate == null) {
+            return ClassEntity.ClassStatus.PLANNED;
+        }
+
+        // Tính status dựa trên ngày
+        ClassEntity.ClassStatus calculatedStatus;
+        if (today.isBefore(startDate)) {
+            calculatedStatus = ClassEntity.ClassStatus.PLANNED;
+        } else if (today.isAfter(endDate)) {
+            calculatedStatus = ClassEntity.ClassStatus.FINISHED;
+        } else {
+            calculatedStatus = ClassEntity.ClassStatus.ONGOING;
+        }
+        
+        // Nếu lớp vừa chuyển sang FINISHED, tự động tốt nghiệp tất cả học viên
+        if (calculatedStatus == ClassEntity.ClassStatus.FINISHED && 
+            classEntity.getStatus() != ClassEntity.ClassStatus.FINISHED) {
+            try {
+                statusManagementService.autoGraduateClassStudents(classEntity.getClassId(), null);
+                System.out.println("Đã tự động tốt nghiệp học viên trong lớp " + classEntity.getClassId());
+            } catch (Exception e) {
+                System.err.println("Lỗi khi tự động tốt nghiệp học viên: " + e.getMessage());
+            }
+        }
+        
+        return calculatedStatus;
+    }
+
+    /**
      * Convert ClassEntity sang ClassResponse
      */
     private ClassResponse convertToClassResponse(ClassEntity classEntity) {
@@ -245,7 +343,10 @@ public class ClassService {
         response.setDescription(classEntity.getDescription());
         response.setStartDate(classEntity.getStartDate());
         response.setEndDate(classEntity.getEndDate());
-        response.setStatus(classEntity.getStatus());
+        
+        // Tính status tự động từ ngày
+        response.setStatus(calculateStatus(classEntity));
+        
         response.setRoom(classEntity.getRoom());
         response.setCapacity(classEntity.getCapacity());
         response.setStudyDays(classEntity.getStudyDays());
@@ -375,5 +476,27 @@ public class ClassService {
             default:
                 return dayOfWeek.name();
         }
+    }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên được phân công
+     * @param lecturerId ID của giảng viên
+     * @return Danh sách lớp học
+     */
+    public List<ClassResponse> getClassesByLecturer(Integer lecturerId) {
+        List<ClassEntity> classes = classRepository.findClassesByLecturerId(lecturerId);
+        return classes.stream()
+                .map(this::convertToClassResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Kiểm tra giảng viên có được phân công vào lớp không
+     * @param lecturerId ID của giảng viên
+     * @param classId ID của lớp học
+     * @return true nếu giảng viên được phân công và còn hiệu lực
+     */
+    public boolean isLecturerAssignedToClass(Integer lecturerId, Integer classId) {
+        return classRepository.isLecturerAssignedToClass(lecturerId, classId);
     }
 }

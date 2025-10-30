@@ -69,6 +69,7 @@ public class ClassController {
      * Lấy danh sách tất cả lớp học
      * Super Admin: xem tất cả
      * Academic Staff/Center Manager: chỉ xem lớp trong trung tâm của mình
+     * Lecturer: chỉ xem lớp được phân công
      */
     @GetMapping
     public ResponseEntity<List<ClassResponse>> getAllClasses(
@@ -89,6 +90,24 @@ public class ClassController {
             } else {
                 return ResponseEntity.ok(classService.getAllClasses());
             }
+        } else if (isCurrentUserLecturer(authentication)) {
+            // Lecturer chỉ xem được lớp mà họ được phân công
+            Integer currentUserId = getCurrentUserId(authentication);
+            if (currentUserId == null) {
+                return ResponseEntity.ok(List.of());
+            }
+            
+            List<ClassResponse> classes = classService.getClassesByLecturer(currentUserId);
+            
+            // Filter theo status nếu có
+            if (status != null) {
+                ClassEntity.ClassStatus classStatus = ClassEntity.ClassStatus.valueOf(status.toUpperCase());
+                classes = classes.stream()
+                        .filter(c -> c.getStatus().equals(classStatus.name()))
+                        .toList();
+            }
+            
+            return ResponseEntity.ok(classes);
         } else {
             // Academic Staff/Center Manager chỉ xem được lớp trong trung tâm của mình
             Integer userCenterId = getCurrentUserCenterId(authentication);
@@ -107,16 +126,30 @@ public class ClassController {
 
     /**
      * Lấy lớp học theo ID
+     * - Super Admin: xem tất cả
+     * - Academic Staff: xem lớp trong trung tâm của mình
+     * - Lecturer: xem lớp được phân công
      */
     @GetMapping("/{id}")
     public ResponseEntity<ClassResponse> getClassById(@PathVariable Integer id, Authentication authentication) {
         ClassResponse classResponse = classService.getClassById(id);
+        Integer currentUserId = getCurrentUserId(authentication);
 
         // Kiểm tra quyền truy cập
         if (!isCurrentUserSuperAdmin(authentication)) {
-            Integer userCenterId = getCurrentUserCenterId(authentication);
-            if (userCenterId == null || !userCenterId.equals(classResponse.getCenterId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            // Kiểm tra nếu là giảng viên
+            if (isCurrentUserLecturer(authentication)) {
+                // Giảng viên chỉ xem được lớp mà họ được phân công
+                boolean isAssigned = classService.isLecturerAssignedToClass(currentUserId, id);
+                if (!isAssigned) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            } else {
+                // Academic Staff chỉ xem lớp trong trung tâm của mình
+                Integer userCenterId = getCurrentUserCenterId(authentication);
+                if (userCenterId == null || !userCenterId.equals(classResponse.getCenterId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
             }
         }
 
@@ -125,11 +158,26 @@ public class ClassController {
 
     /**
      * Lấy danh sách lớp học lite cho dropdown
+     * Super Admin: xem tất cả
+     * Lecturer: chỉ xem lớp được phân công
+     * Academic Staff: xem lớp trong trung tâm của mình
      */
     @GetMapping("/lite")
     public ResponseEntity<List<ClassLiteResponse>> getClassesLite(Authentication authentication) {
         if (isCurrentUserSuperAdmin(authentication)) {
             return ResponseEntity.ok(classService.getClassesLite());
+        } else if (isCurrentUserLecturer(authentication)) {
+            // Lecturer chỉ xem lớp được phân công
+            Integer currentUserId = getCurrentUserId(authentication);
+            if (currentUserId == null) {
+                return ResponseEntity.ok(List.of());
+            }
+            List<ClassResponse> classes = classService.getClassesByLecturer(currentUserId);
+            List<ClassLiteResponse> liteClasses = classes.stream()
+                    .map(c -> new ClassLiteResponse(c.getClassId(), c.getName(),
+                            c.getProgramName(), c.getCenterName(), c.getStatus()))
+                    .toList();
+            return ResponseEntity.ok(liteClasses);
         } else {
             // Academic Staff chỉ xem lớp trong trung tâm của mình
             Integer userCenterId = getCurrentUserCenterId(authentication);
@@ -202,6 +250,17 @@ public class ClassController {
     }
 
     /**
+     * Kiểm tra user hiện tại có phải Lecturer không
+     */
+    private boolean isCurrentUserLecturer(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String sub = jwt.getClaimAsString("sub");
+            return userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(sub, "LECTURER");
+        }
+        return false;
+    }
+
+    /**
      * Lấy Center ID của user hiện tại (dành cho Academic Staff/Center Manager)
      */
     private Integer getCurrentUserCenterId(Authentication authentication) {
@@ -210,5 +269,21 @@ public class ClassController {
             return userRoleRepository.findCenterIdByKeycloakUserId(sub);
         }
         return null;
+    }
+
+    /**
+     * Lấy danh sách lớp học mà giảng viên được phân công
+     * Chỉ giảng viên mới được gọi endpoint này
+     */
+    @GetMapping("/my-classes")
+    @PreAuthorize("@authz.hasRole(authentication, 'LECTURER')")
+    public ResponseEntity<List<ClassResponse>> getMyClasses(Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<ClassResponse> classes = classService.getClassesByLecturer(currentUserId);
+        return ResponseEntity.ok(classes);
     }
 }

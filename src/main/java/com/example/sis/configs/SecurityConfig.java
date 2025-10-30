@@ -128,6 +128,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.DELETE, "/api/classes/*/lecturers/*")
                                                 .authenticated()
 
+                                                // Student Classes
+                                                .requestMatchers(HttpMethod.GET, "/api/students/my-classes")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/students/*/classes")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/lecturers/*/classes")
+                                                .authenticated()
+
                                                 // User-Role assignments
                                                 .requestMatchers(HttpMethod.GET, "/api/user-roles/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-roles/**").authenticated()
@@ -141,6 +149,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/students/**").authenticated()
                                                 .requestMatchers(HttpMethod.PUT, "/api/students/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/students/**").authenticated()
+
+                                                // Attendance
+                                                .requestMatchers(HttpMethod.GET, "/api/attendance-schedules").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/attendance-sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/attendance-sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/attendance-sessions/**").authenticated()
 
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak

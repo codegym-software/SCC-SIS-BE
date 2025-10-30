@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * /api/classes/{classId}/students
- * GET    : Xem/Lọc (SA | Academic Staff)
+ * GET    : Xem/Lọc (SA | Academic Staff | Lecturer được phân công)
  * POST   : Thêm (SA | Academic Staff)
  * PATCH  : Cập nhật (SA | Academic Staff)
  * DELETE : Xóa mềm (SA | Academic Staff)
@@ -34,9 +34,9 @@ public class EnrollmentController {
         this.userRoleRepo = userRoleRepo;
     }
 
-    // ===== List + Filter =====
+    // ===== List + Filter (cho phép Lecturer xem) =====
     @GetMapping
-    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasAcademicAccessForClass(authentication, #classId)")
+    @PreAuthorize("@authz.hasAcademicAccessForClass(authentication, #classId)")
     public ResponseEntity<Page<EnrollmentResponse>> list(
             @PathVariable Integer classId,
             @RequestParam(required = false) EnrollmentStatus status,

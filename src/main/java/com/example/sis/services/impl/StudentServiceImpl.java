@@ -2,6 +2,7 @@ package com.example.sis.services.impl;
 
 import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
+import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
 import com.example.sis.enums.GenderType;
 import com.example.sis.enums.OverallStatus;
@@ -10,8 +11,14 @@ import com.example.sis.models.User;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.services.StudentService;
+import com.example.sis.keycloak.KeycloakAdminClient;
+import com.example.sis.models.Role;
+import com.example.sis.models.UserRole;
+import com.example.sis.repositories.RoleRepository;
+import com.example.sis.repositories.UserRoleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +29,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -29,9 +37,13 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -42,19 +54,35 @@ public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepo;
     private final UserRepository userRepo;
+    private final KeycloakAdminClient kcAdmin;
+    private final RoleRepository roleRepo;
+    private final UserRoleRepository userRoleRepo;
 
-    public StudentServiceImpl(StudentRepository studentRepo, UserRepository userRepo) {
+    @Value("${keycloak.admin.default-temp-password:Team5@12345}")
+    private String defaultTempPassword;
+
+    public StudentServiceImpl(StudentRepository studentRepo, 
+                             UserRepository userRepo,
+                             KeycloakAdminClient kcAdmin,
+                             RoleRepository roleRepo,
+                             UserRoleRepository userRoleRepo) {
         this.studentRepo = studentRepo;
         this.userRepo = userRepo;
+        this.kcAdmin = kcAdmin;
+        this.roleRepo = roleRepo;
+        this.userRoleRepo = userRoleRepo;
     }
 
     @Override
     @Transactional
     public StudentResponse createStudent(CreateStudentRequest request, Integer createdByUserId) {
 
-        // 1. Validate email không trùng
+        // 1. Validate email không trùng (cả students và users)
         if (studentRepo.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống");
+            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống học viên");
+        }
+        if (userRepo.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống người dùng");
         }
 
         // 2. Tạo Student entity
@@ -90,12 +118,102 @@ public class StudentServiceImpl implements StudentService {
             }
         }
 
-        // 3. Lưu vào database
-        student = studentRepo.save(student);
-        log.info("✅ Đã tạo hồ sơ học viên - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+        // ========== TẠO TÀI KHOẢN USER + KEYCLOAK ==========
+        try {
+            log.info("🔐 Bắt đầu tạo tài khoản đăng nhập cho học viên: {}", request.getEmail());
 
-        // 4. Trả về response
+            // 3. Tạo user trên Keycloak
+            String username = request.getEmail(); // Dùng email làm username
+            String[] names = splitName(request.getFullName());
+            String keycloakUserId = kcAdmin.createUser(
+                username, 
+                request.getEmail(), 
+                names[0],  // firstName
+                names[1],  // lastName
+                true       // enabled
+            );
+            
+            log.info("✅ Đã tạo user trên Keycloak - ID: {}", keycloakUserId);
+
+            // 4. Set mật khẩu tạm
+            if (defaultTempPassword != null && !defaultTempPassword.isBlank()) {
+                try {
+                    kcAdmin.setTemporaryPassword(keycloakUserId, defaultTempPassword, true);
+                    log.info("✅ Đã set mật khẩu tạm cho user: {}", keycloakUserId);
+                } catch (Exception pwEx) {
+                    log.warn("⚠️ Không set được mật khẩu tạm: {}", pwEx.getMessage());
+                }
+            }
+
+            // 5. Tạo User entity trong DB
+            User user = new User();
+            user.setFullName(request.getFullName());
+            user.setEmail(request.getEmail());
+            user.setPhone(request.getPhone());
+            user.setKeycloakUserId(keycloakUserId);
+            user.setDob(request.getDob());
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                user.setGender(GenderType.valueOf(request.getGender().toUpperCase()));
+            }
+            user.setNationalIdNo(request.getNationalIdNo());
+            user.setAddressLine(request.getAddressLine());
+            user.setProvince(request.getProvince());
+            user.setDistrict(request.getDistrict());
+            user.setWard(request.getWard());
+            user.setActive(true);
+            
+            user = userRepo.save(user);
+            log.info("✅ Đã tạo User trong DB - User ID: {}", user.getUserId());
+
+            // 6. Gán role STUDENT cho user
+            Optional<Integer> studentRoleIdOpt = roleRepo.findIdByCode("STUDENT");
+            if (studentRoleIdOpt.isPresent()) {
+                Role studentRole = roleRepo.findById(studentRoleIdOpt.get()).orElse(null);
+                if (studentRole != null) {
+                    UserRole userRole = new UserRole();
+                    userRole.setUser(user);
+                    userRole.setRole(studentRole);
+                    userRole.setCenter(null); // STUDENT role không cần center
+                    userRole.setAssignedAt(java.time.LocalDateTime.now());
+                    userRoleRepo.save(userRole);
+                    log.info("✅ Đã gán role STUDENT cho User ID: {}", user.getUserId());
+                } else {
+                    log.warn("⚠️ Không tìm thấy role STUDENT để gán");
+                }
+            } else {
+                log.warn("⚠️ Không tìm thấy role code STUDENT trong hệ thống");
+            }
+
+            // 7. Liên kết Student với User
+            student.setUser(user);
+            log.info("✅ Đã liên kết Student với User account");
+
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi tạo tài khoản user cho học viên: {}", e.getMessage(), e);
+            throw new IllegalStateException("Không thể tạo tài khoản đăng nhập cho học viên: " + e.getMessage());
+        }
+        // ========== KẾT THÚC TẠO TÀI KHOẢN ==========
+
+        // 8. Lưu Student vào database
+        student = studentRepo.save(student);
+        log.info("✅ Đã tạo hồ sơ học viên - Student ID: {} - {} (User ID: {})", 
+            student.getStudentId(), student.getFullName(), 
+            student.getUser() != null ? student.getUser().getUserId() : "N/A");
+
+        // 9. Trả về response
         return toResponse(student);
+    }
+
+    /**
+     * Helper method: Tách tên thành firstName và lastName
+     */
+    private String[] splitName(String fullName) {
+        if (fullName == null || fullName.isBlank()) return new String[]{"", ""};
+        String[] parts = fullName.trim().split("\\s+");
+        if (parts.length == 1) return new String[]{parts[0], ""};
+        String lastName = parts[parts.length - 1];
+        String firstName = String.join(" ", java.util.Arrays.copyOf(parts, parts.length - 1));
+        return new String[]{firstName, lastName};
     }
 
     @Override
@@ -109,8 +227,18 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportStudentsToExcel() throws IOException {
-        List<Student> students = studentRepo.findAllActiveStudents();
+    public byte[] exportStudentsToExcel(String status) throws IOException {
+        // Lấy danh sách students theo status (nếu có)
+        List<Student> students;
+        if (status != null && !status.isEmpty()) {
+            // Lọc theo overallStatus
+            students = studentRepo.findAllActiveStudents().stream()
+                    .filter(s -> s.getOverallStatus() != null && s.getOverallStatus().name().equals(status))
+                    .collect(Collectors.toList());
+        } else {
+            // Lấy tất cả
+            students = studentRepo.findAllActiveStudents();
+        }
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Students");
@@ -206,6 +334,74 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
+    public byte[] generateImportTemplate() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Student Import Template");
+
+            // Create header style (bold + blue background)
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            
+            // Create date cell style for example row
+            CreationHelper creationHelper = workbook.getCreationHelper();
+            CellStyle dateStyle = workbook.createCellStyle();
+            short df = creationHelper.createDataFormat().getFormat("yyyy-mm-dd");
+            dateStyle.setDataFormat(df);
+
+            // Header row - must match import column order (without Student ID)
+            Row headerRow = sheet.createRow(0);
+            String[] columns = new String[] {
+                "Full name",
+                "Email",
+                "Phone",
+                "DOB",
+                "Gender",
+                "National ID",
+                "Address",
+                "Province",
+                "District",
+                "Ward",
+                "Note"
+            };
+            
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 6000);
+            }
+
+            // Example row with sample data
+            Row exampleRow = sheet.createRow(1);
+            int c = 0;
+            exampleRow.createCell(c++).setCellValue("Nguyen Van A");
+            exampleRow.createCell(c++).setCellValue("nguyenvana@example.com");
+            exampleRow.createCell(c++).setCellValue("0901234567");
+            
+            Cell dobCell = exampleRow.createCell(c++);
+            dobCell.setCellValue("2000-01-15");
+            
+            exampleRow.createCell(c++).setCellValue("MALE");
+            exampleRow.createCell(c++).setCellValue("001234567890");
+            exampleRow.createCell(c++).setCellValue("123 ABC Street");
+            exampleRow.createCell(c++).setCellValue("Ha Noi");
+            exampleRow.createCell(c++).setCellValue("Cau Giay");
+            exampleRow.createCell(c++).setCellValue("Dich Vong");
+            exampleRow.createCell(c++).setCellValue("Sample student");
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Override
     @Transactional
     public List<StudentResponse> importStudentsFromExcel(MultipartFile file, Integer createdByUserId) throws IOException {
         List<StudentResponse> created = new ArrayList<>();
@@ -225,10 +421,8 @@ public class StudentServiceImpl implements StudentService {
                 if (row == null) continue;
 
                 try {
-                    // Read cells by column index consistent with export header
+                    // Read cells by column index - starts from col 0 (no Student ID in template)
                     int c = 0;
-                    // Skip Student ID col (col 0)
-                    Cell skipId = row.getCell(c++);
 
                     String fullName = getStringCell(row.getCell(c++));
                     String email = getStringCell(row.getCell(c++));
@@ -410,7 +604,7 @@ public class StudentServiceImpl implements StudentService {
         try {
             newStatus = OverallStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận: ACTIVE, INACTIVE, GRADUATED, SUSPENDED");
+            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận: PENDING, ACTIVE, DROPPED, GRADUATED");
         }
 
         // 3. Cập nhật trạng thái
@@ -464,8 +658,80 @@ public class StudentServiceImpl implements StudentService {
         response.setWard(student.getWard());
         response.setNote(student.getNote());
         response.setOverallStatus(student.getOverallStatus().name());
+        response.setUserId(student.getUser() != null ? student.getUser().getUserId() : null);
         response.setCreatedAt(student.getCreatedAt());
         response.setUpdatedAt(student.getUpdatedAt());
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentWithEnrollmentsResponse getStudentWithEnrollmentsById(Integer studentId) {
+        log.info("📋 Lấy thông tin học viên với enrollments ID: {}", studentId);
+
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy học viên với ID: " + studentId));
+
+        return toStudentWithEnrollmentsResponse(student);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentWithEnrollmentsResponse> getAllStudentsWithEnrollments() {
+        log.info("📋 Lấy danh sách tất cả học viên với enrollments");
+
+        return studentRepo.findAll().stream()
+                .map(this::toStudentWithEnrollmentsResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert Student entity to StudentWithEnrollmentsResponse
+     */
+    private StudentWithEnrollmentsResponse toStudentWithEnrollmentsResponse(Student student) {
+        StudentWithEnrollmentsResponse response = new StudentWithEnrollmentsResponse();
+        
+        // Basic student info
+        response.setStudentId(student.getStudentId());
+        response.setFullName(student.getFullName());
+        response.setEmail(student.getEmail());
+        response.setPhone(student.getPhone());
+        response.setDob(student.getDob());
+        response.setGender(student.getGender() != null ? student.getGender().name() : null);
+        response.setNationalIdNo(student.getNationalIdNo());
+        response.setAddressLine(student.getAddressLine());
+        response.setProvince(student.getProvince());
+        response.setDistrict(student.getDistrict());
+        response.setWard(student.getWard());
+        response.setNote(student.getNote());
+        response.setOverallStatus(student.getOverallStatus().name());
+        response.setUserId(student.getUser() != null ? student.getUser().getUserId() : null);
+        response.setCreatedAt(student.getCreatedAt());
+        response.setUpdatedAt(student.getUpdatedAt());
+
+        // Load enrollments using native query or repository method
+        List<StudentWithEnrollmentsResponse.EnrollmentDetail> enrollments = 
+            studentRepo.findEnrollmentsByStudentId(student.getStudentId()).stream()
+                .map(this::mapToEnrollmentDetail)
+                .collect(Collectors.toList());
+        
+        response.setEnrollments(enrollments);
+        return response;
+    }
+
+    /**
+     * Map enrollment data to EnrollmentDetail
+     */
+    private StudentWithEnrollmentsResponse.EnrollmentDetail mapToEnrollmentDetail(Object[] enrollmentData) {
+        return new StudentWithEnrollmentsResponse.EnrollmentDetail(
+            (Integer) enrollmentData[0], // enrollmentId
+            (Integer) enrollmentData[1], // classId
+            (String) enrollmentData[2],  // className
+            (String) enrollmentData[3],  // programName
+            (String) enrollmentData[4],  // status
+            (LocalDate) enrollmentData[5], // enrolledAt
+            (LocalDate) enrollmentData[6], // leftAt
+            (String) enrollmentData[7]   // enrollmentNote
+        );
     }
 }

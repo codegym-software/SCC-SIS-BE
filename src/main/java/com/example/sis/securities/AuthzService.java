@@ -58,6 +58,13 @@ public class AuthzService {
         return hasRole(authentication, "SUPER_ADMIN");
     }
 
+    /** Có bất kỳ role academic nào (ACADEMIC_STAFF hoặc CENTER_MANAGER) không? */
+    public boolean hasAnyAcademicRole(Authentication authentication) {
+        String sub = getSub(authentication);
+        if (sub == null) return false;
+        return hasRole(authentication, "ACADEMIC_STAFF") || hasRole(authentication, "CENTER_MANAGER");
+    }
+
     /** Kiểm tra xem user hiện tại có phải là userId được truyền vào không */
     public boolean isOwnProfile(Authentication authentication, Integer userId) {
         if (userId == null) return false;
@@ -104,10 +111,28 @@ public class AuthzService {
     /**
      * Dùng trực tiếp trong @PreAuthorize:
      *   @authz.hasAcademicAccessForClass(authentication, #classId)
+     * 
+     * Cho phép:
+     * - Super Admin
+     * - Academic Staff/Center Manager của center chứa lớp đó
+     * - Lecturer được phân công vào lớp đó
      */
     public boolean hasAcademicAccessForClass(Authentication authentication, Integer classId) {
+        // Super Admin luôn pass
+        if (isSuperAdmin(authentication)) return true;
+
+        // Kiểm tra Academic Staff/Center Manager
         Integer centerId = classRepo.findCenterIdByClassId(classId);
-        return hasAcademicAccess(authentication, centerId);
+        if (hasAcademicAccess(authentication, centerId)) return true;
+
+        // Kiểm tra Lecturer được phân công
+        String sub = getSub(authentication);
+        if (sub == null) return false;
+        
+        Integer userId = userRoleRepo.findUserIdByKeycloakUserId(sub);
+        if (userId == null) return false;
+
+        return classRepo.isLecturerAssignedToClass(userId, classId);
     }
 
     // ===================== USER-ROLE MANAGEMENT =====================
