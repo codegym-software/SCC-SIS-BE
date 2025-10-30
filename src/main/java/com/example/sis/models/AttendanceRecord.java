@@ -31,18 +31,21 @@ public class AttendanceRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_attendance_records_session"))
+    @com.fasterxml.jackson.annotation.JsonBackReference
     private AttendanceSession session;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enrollment_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_attendance_records_enrollment"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Enrollment enrollment;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_attendance_records_student"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Student student;
 
     @NotNull
@@ -56,11 +59,13 @@ public class AttendanceRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by",
             foreignKey = @ForeignKey(name = "fk_attendance_records_created_by"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by",
             foreignKey = @ForeignKey(name = "fk_attendance_records_updated_by"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -76,6 +81,7 @@ public class AttendanceRecord {
     private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @JoinColumn(name = "deleted_by",
             foreignKey = @ForeignKey(name = "fk_attendance_records_deleted_by"))
     private User deletedBy;

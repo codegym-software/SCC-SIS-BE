@@ -30,12 +30,14 @@ public class AttendanceSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_attendance_sessions_class"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private ClassEntity classEntity;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_attendance_sessions_teacher"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User teacher;
 
     @NotNull
@@ -57,11 +59,13 @@ public class AttendanceSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by",
             foreignKey = @ForeignKey(name = "fk_attendance_sessions_created_by"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by",
             foreignKey = @ForeignKey(name = "fk_attendance_sessions_updated_by"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -79,9 +83,11 @@ public class AttendanceSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deleted_by",
             foreignKey = @ForeignKey(name = "fk_attendance_sessions_deleted_by"))
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User deletedBy;
 
-    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private List<AttendanceRecord> records;
 
     @PrePersist
