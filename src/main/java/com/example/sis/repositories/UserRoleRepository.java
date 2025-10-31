@@ -132,6 +132,14 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
       """)
   List<UserRole> findActiveByUserId(@Param("userId") Integer userId);
 
+  // NEW: list revoked roles of a user (to check which roles cannot be re-assigned)
+  @Query("""
+          SELECT ur FROM UserRole ur
+          WHERE ur.user.userId = :userId AND ur.revokedAt IS NOT NULL
+          ORDER BY ur.revokedAt DESC
+      """)
+  List<UserRole> findRevokedByUserId(@Param("userId") Integer userId);
+
   // NEW: bulk soft revoke by ids (efficient)
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("""
@@ -166,4 +174,16 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
   // NEW: check if specific user-role-center assignment exists
   @Query("SELECT COUNT(ur) > 0 FROM UserRole ur WHERE ur.user.userId = :userId AND ur.role.roleId = :roleId AND COALESCE(ur.center.centerId, -1) = COALESCE(:centerId, -1) AND ur.revokedAt IS NULL")
   boolean existsByUserIdAndRoleIdAndCenterId(@Param("userId") Long userId, @Param("roleId") Integer roleId, @Param("centerId") Integer centerId);
+
+  // NEW: check if user has ever had this role (including revoked) - to prevent re-assignment after revoke
+  @Query("""
+        SELECT COUNT(ur) > 0
+        FROM UserRole ur
+        WHERE ur.user.userId = :userId
+          AND ur.role.roleId = :roleId
+          AND COALESCE(ur.center.centerId, -1) = COALESCE(:centerId, -1)
+      """)
+  boolean hasEverHadRole(@Param("userId") Integer userId,
+                         @Param("roleId") Integer roleId,
+                         @Param("centerId") Integer centerId);
 }

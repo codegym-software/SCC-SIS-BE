@@ -100,7 +100,7 @@ public class UserRoleServiceImpl implements UserRoleService {
             throw new BadRequestException("Người dùng này đã đạt giới hạn " + MAX_ACTIVE_CENTER_ROLES_PER_USER + " vai trò trung tâm");
         }
 
-        // Idempotent
+        // Idempotent: check if already has active assignment
         boolean exists = userRoleRepository.existsActiveAssignment(
                 request.getUserId(), request.getRoleId(), request.getCenterId());
         if (exists) {
@@ -112,6 +112,13 @@ public class UserRoleServiceImpl implements UserRoleService {
                     .findFirst()
                     .map(this::toDto)
                     .orElseThrow(() -> new NotFoundException("Active assignment not found though existence check passed"));
+        }
+
+        // Prevent re-assignment after revoke: check if user has ever had this role (including revoked)
+        boolean hasEverHad = userRoleRepository.hasEverHadRole(
+                request.getUserId(), request.getRoleId(), request.getCenterId());
+        if (hasEverHad) {
+            throw new BadRequestException("Không thể gán lại vai trò này vì đã từng bị hủy gán trước đó");
         }
 
         Center center = null;
@@ -287,6 +294,15 @@ public class UserRoleServiceImpl implements UserRoleService {
         if (userId == null) throw new BadRequestException("User ID must not be null");
         List<UserRole> userRoles = userRoleRepository.findActiveByUserId(userId);
         return userRoles.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    /** List revoked roles of a user (to check which roles cannot be re-assigned). */
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserRoleResponse> getRevokedRolesByUserId(Integer userId) {
+        if (userId == null) throw new BadRequestException("User ID must not be null");
+        List<UserRole> revokedRoles = userRoleRepository.findRevokedByUserId(userId);
+        return revokedRoles.stream().map(this::toDto).collect(Collectors.toList());
     }
 
     /** Check if user has role at center (centerId may be null for GLOBAL). */
@@ -543,7 +559,7 @@ public class UserRoleServiceImpl implements UserRoleService {
                     continue;
                 }
 
-                // Kiểm tra center tồn tại
+                // Kiểm tra center tồn tại trước
                 Center center = null;
                 if (r.getCenterId() != null) {
                     center = centerMap.get(r.getCenterId());
@@ -551,6 +567,19 @@ public class UserRoleServiceImpl implements UserRoleService {
                         summary.addError("Không tìm thấy trung tâm với ID: " + r.getCenterId());
                         continue;
                     }
+                }
+
+                // Prevent re-assignment after revoke: check if user has ever had this role (including revoked)
+                boolean hasEverHad = userRoleRepository.hasEverHadRole(
+                        userId, r.getRoleId(), r.getCenterId());
+                if (hasEverHad) {
+                    String errorMsg = "Không thể gán lại vai trò \"" + role.getName() + "\"";
+                    if (center != null) {
+                        errorMsg += " tại trung tâm \"" + center.getName() + "\"";
+                    }
+                    errorMsg += " vì đã từng bị hủy gán trước đó";
+                    summary.addError(errorMsg);
+                    continue;
                 }
 
                 // Tạo UserRole để thêm vào danh sách sẽ xử lý
