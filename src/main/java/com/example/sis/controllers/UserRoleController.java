@@ -105,4 +105,13 @@ public class UserRoleController {
     ) {
         return ResponseEntity.ok(userRoleService.getUserRolesByUserId(userId));
     }
+
+    /** List revoked roles of a user (to check which roles cannot be re-assigned). */
+    @GetMapping("/user/{userId}/revoked")
+    @PreAuthorize("@authz.canListUsers(authentication, null)")
+    public ResponseEntity<List<UserRoleResponse>> getRevokedRolesByUserId(
+            @PathVariable Integer userId
+    ) {
+        return ResponseEntity.ok(userRoleService.getRevokedRolesByUserId(userId));
+    }
 }
