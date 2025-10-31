@@ -83,6 +83,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleValidation(Exception ex, WebRequest req) {
         String message = "Dữ liệu không hợp lệ.";
 
+        System.err.println("=== VALIDATION ERROR ===");
+        System.err.println("Exception type: " + ex.getClass().getName());
+        ex.printStackTrace();
+
         if (ex instanceof MethodArgumentNotValidException) {
             MethodArgumentNotValidException validEx = (MethodArgumentNotValidException) ex;
             List<String> errors = validEx.getBindingResult()
@@ -91,10 +95,15 @@ public class GlobalExceptionHandler {
                     .map(this::getFieldErrorMessage)
                     .collect(Collectors.toList());
 
+            System.err.println("Validation errors: " + errors);
+
             if (!errors.isEmpty()) {
                 message = String.join(". ", errors) + ".";
             }
         }
+
+        System.err.println("Final message: " + message);
+        System.err.println("========================");
 
         return build(HttpStatus.BAD_REQUEST, message, req);
     }
