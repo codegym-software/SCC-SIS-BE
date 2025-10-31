@@ -3,6 +3,7 @@ package com.example.sis.securities;
 import com.example.sis.dtos.userrole.UserRoleRequest;
 import com.example.sis.models.Role;
 import com.example.sis.repositories.ClassRepository;
+import com.example.sis.repositories.RolePermissionRepository;
 import com.example.sis.repositories.RoleRepository;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.utils.RoleScopeUtil;
@@ -22,13 +23,16 @@ public class AuthzService {
     private final UserRoleRepository userRoleRepo;
     private final RoleRepository roleRepo;
     private final ClassRepository classRepo;
+    private final RolePermissionRepository rolePermissionRepo;
 
     public AuthzService(UserRoleRepository userRoleRepo,
                         RoleRepository roleRepo,
-                        ClassRepository classRepo) {
+                        ClassRepository classRepo,
+                        RolePermissionRepository rolePermissionRepo) {
         this.userRoleRepo = userRoleRepo;
         this.roleRepo = roleRepo;
         this.classRepo = classRepo;
+        this.rolePermissionRepo = rolePermissionRepo;
     }
 
     // ===================== JWT Helper =====================
@@ -51,6 +55,30 @@ public class AuthzService {
         String sub = getSub(authentication);
         if (sub == null) return false;
         return userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, roleCode);
+    }
+
+    // ===================== PERMISSION-LEVEL CHECKS =====================
+
+    /**
+     * Kiểm tra user có permission cụ thể không (qua các roles của user).
+     * Super Admin luôn có tất cả permissions.
+     * 
+     * Ví dụ sử dụng: @PreAuthorize("@authz.hasPermission(authentication, 'USER_CREATE')")
+     */
+    public boolean hasPermission(Authentication authentication, String permissionCode) {
+        if (authentication == null || permissionCode == null || permissionCode.isBlank()) {
+            return false;
+        }
+        
+        // Super Admin luôn có tất cả permissions
+        if (isSuperAdmin(authentication)) {
+            return true;
+        }
+        
+        String sub = getSub(authentication);
+        if (sub == null) return false;
+        
+        return rolePermissionRepo.userHasPermissionByKeycloakId(sub, permissionCode);
     }
 
     /** Là Super Admin? */

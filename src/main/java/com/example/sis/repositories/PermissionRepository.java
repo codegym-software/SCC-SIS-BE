@@ -48,8 +48,13 @@ public interface PermissionRepository extends JpaRepository<Permission, Integer>
     @Query("SELECT p.category, COUNT(p) FROM Permission p WHERE p.active = true GROUP BY p.category")
     List<Object[]> countActiveGroupByCategory();
 
-    // NEW: Find permissions by role ID (JOIN role_permissions)
-    @Query("SELECT p FROM Permission p JOIN RolePermission rp ON p.permissionId = rp.permission.permissionId WHERE rp.role.roleId = :roleId")
+    // NEW: Find permissions by role ID (JOIN role_permissions) - only active permissions
+    @Query("""
+        SELECT p FROM Permission p 
+        JOIN RolePermission rp ON p.permissionId = rp.permission.permissionId 
+        WHERE rp.role.roleId = :roleId AND p.active = true
+        ORDER BY p.category, p.name
+        """)
     List<Permission> findByRoleId(@Param("roleId") Integer roleId);
 
     // NEW: Find permissions by list of permission IDs

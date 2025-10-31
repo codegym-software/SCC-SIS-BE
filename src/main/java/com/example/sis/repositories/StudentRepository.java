@@ -14,13 +14,24 @@ public interface StudentRepository extends JpaRepository<Student, Integer> {
   boolean existsByEmail(String email);
 
   /**
-   * Kiểm tra hồ sơ học viên có hợp lệ (đang hoạt động, chưa bị INACTIVE)
+   * Kiểm tra email đã tồn tại (case-insensitive, không bao gồm học viên đã xóa mềm)
+   */
+  @Query("""
+      SELECT COUNT(s) > 0
+      FROM Student s
+      WHERE LOWER(s.email) = LOWER(:email)
+        AND s.deletedAt IS NULL
+      """)
+  boolean existsByEmailIgnoreCase(@Param("email") String email);
+
+  /**
+   * Kiểm tra hồ sơ học viên có hợp lệ (đang hoạt động, chưa bị xóa mềm)
    */
   @Query("""
       SELECT COUNT(s) > 0
       FROM Student s
       WHERE s.studentId = :studentId
-        AND s.overallStatus <> com.example.sis.enums.OverallStatus.INACTIVE
+        AND s.deletedAt IS NULL
       """)
   boolean isUsableProfile(Integer studentId);
 

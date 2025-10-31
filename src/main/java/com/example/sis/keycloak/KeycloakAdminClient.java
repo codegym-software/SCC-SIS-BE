@@ -100,23 +100,45 @@ public class KeycloakAdminClient {
                 "enabled", enabled,
                 "emailVerified", false
         );
-        ResponseEntity<Void> rsp = rest.exchange(
-                adminUsersEndpoint(),
-                HttpMethod.POST,
-                new HttpEntity<>(body, h),
-                Void.class
-        );
-        if (rsp.getStatusCode() != HttpStatus.CREATED) {
-            throw new IllegalStateException("Tạo user trên Keycloak thất bại, status=" + rsp.getStatusCode());
+        try {
+            ResponseEntity<Void> rsp = rest.exchange(
+                    adminUsersEndpoint(),
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, h),
+                    Void.class
+            );
+            if (rsp.getStatusCode() != HttpStatus.CREATED) {
+                throw new IllegalStateException("Tạo user trên Keycloak thất bại, status=" + rsp.getStatusCode());
+            }
+            URI location = rsp.getHeaders().getLocation();
+            if (location == null) {
+                String id = findUserIdByEmail(email);
+                if (id == null) throw new IllegalStateException("Không trích xuất được userId từ Location header");
+                return id;
+            }
+            String path = location.getPath();
+            return path.substring(path.lastIndexOf('/') + 1);
+        } catch (HttpClientErrorException e) {
+            // Xử lý lỗi 409 Conflict - User đã tồn tại trong Keycloak
+            if (e.getStatusCode() == HttpStatus.CONFLICT) {
+                String errorMessage = "Email \"" + email + "\" đã được sử dụng cho tài khoản đăng nhập trong hệ thống. Vui lòng sử dụng email khác.";
+                try {
+                    // Thử parse error message từ response body nếu có
+                    if (e.getResponseBodyAsString() != null) {
+                        String responseBody = e.getResponseBodyAsString();
+                        if (responseBody.contains("username") || responseBody.contains("email")) {
+                            // Giữ nguyên message từ Keycloak nhưng thêm email cụ thể
+                            errorMessage = "Email \"" + email + "\" đã được sử dụng cho tài khoản đăng nhập trong hệ thống. Vui lòng sử dụng email khác.";
+                        }
+                    }
+                } catch (Exception parseEx) {
+                    // Nếu không parse được, dùng message mặc định
+                }
+                throw new IllegalArgumentException(errorMessage);
+            }
+            // Các lỗi khác từ Keycloak
+            throw new IllegalStateException("Không thể tạo tài khoản đăng nhập: " + e.getMessage() + " (status: " + e.getStatusCode() + ")");
         }
-        URI location = rsp.getHeaders().getLocation();
-        if (location == null) {
-            String id = findUserIdByEmail(email);
-            if (id == null) throw new IllegalStateException("Không trích xuất được userId từ Location header");
-            return id;
-        }
-        String path = location.getPath();
-        return path.substring(path.lastIndexOf('/') + 1);
     }
 
     /** Đảm bảo có user trên Keycloak & trả về userId (sub) */

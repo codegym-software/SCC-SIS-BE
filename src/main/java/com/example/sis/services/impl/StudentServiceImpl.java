@@ -77,18 +77,19 @@ public class StudentServiceImpl implements StudentService {
     @Transactional
     public StudentResponse createStudent(CreateStudentRequest request, Integer createdByUserId) {
 
-        // 1. Validate email không trùng (cả students và users)
-        if (studentRepo.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống học viên");
+        // 1. Validate email không trùng (cả students và users) - case-insensitive
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (studentRepo.existsByEmailIgnoreCase(request.getEmail())) {
+            throw new IllegalArgumentException("Email \"" + request.getEmail() + "\" đã được sử dụng bởi một học viên khác trong hệ thống. Vui lòng sử dụng email khác.");
         }
-        if (userRepo.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại trong hệ thống người dùng");
+        if (userRepo.existsByEmailIgnoreCase(request.getEmail())) {
+            throw new IllegalArgumentException("Email \"" + request.getEmail() + "\" đã được sử dụng bởi một người dùng khác trong hệ thống. Vui lòng sử dụng email khác.");
         }
 
         // 2. Tạo Student entity
         Student student = new Student();
         student.setFullName(request.getFullName());
-        student.setEmail(request.getEmail());
+        student.setEmail(normalizedEmail); // Lưu email đã normalize (lowercase)
         student.setPhone(request.getPhone());
         student.setDob(request.getDob());
 
@@ -107,7 +108,8 @@ public class StudentServiceImpl implements StudentService {
         student.setDistrict(request.getDistrict());
         student.setWard(request.getWard());
         student.setNote(request.getNote());
-        student.setOverallStatus(OverallStatus.ACTIVE);
+        // Mặc định là PENDING khi chưa có lớp, sẽ chuyển thành ACTIVE khi được gán vào lớp
+        student.setOverallStatus(OverallStatus.PENDING);
 
         // Set audit fields
         if (createdByUserId != null) {
@@ -123,11 +125,11 @@ public class StudentServiceImpl implements StudentService {
             log.info("🔐 Bắt đầu tạo tài khoản đăng nhập cho học viên: {}", request.getEmail());
 
             // 3. Tạo user trên Keycloak
-            String username = request.getEmail(); // Dùng email làm username
+            String username = normalizedEmail; // Dùng email đã normalize làm username
             String[] names = splitName(request.getFullName());
             String keycloakUserId = kcAdmin.createUser(
                 username, 
-                request.getEmail(), 
+                normalizedEmail, 
                 names[0],  // firstName
                 names[1],  // lastName
                 true       // enabled
@@ -148,7 +150,7 @@ public class StudentServiceImpl implements StudentService {
             // 5. Tạo User entity trong DB
             User user = new User();
             user.setFullName(request.getFullName());
-            user.setEmail(request.getEmail());
+            user.setEmail(normalizedEmail); // Lưu email đã normalize (lowercase)
             user.setPhone(request.getPhone());
             user.setKeycloakUserId(keycloakUserId);
             user.setDob(request.getDob());
@@ -188,7 +190,12 @@ public class StudentServiceImpl implements StudentService {
             student.setUser(user);
             log.info("✅ Đã liên kết Student với User account");
 
+        } catch (IllegalArgumentException e) {
+            // Lỗi validation (email trùng trong Keycloak) - re-throw để GlobalExceptionHandler xử lý
+            log.error("❌ Email đã tồn tại trong Keycloak: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
+            // Các lỗi khác (network, Keycloak server error, ...)
             log.error("❌ Lỗi khi tạo tài khoản user cho học viên: {}", e.getMessage(), e);
             throw new IllegalStateException("Không thể tạo tài khoản đăng nhập cho học viên: " + e.getMessage());
         }
@@ -581,13 +588,13 @@ public class StudentServiceImpl implements StudentService {
             throw new IllegalArgumentException("Học viên đã bị xóa trước đó");
         }
 
-        // 3. Set deletedAt = hiện tại VÀ đổi trạng thái sang INACTIVE
+        // 3. Set deletedAt = hiện tại VÀ đổi trạng thái sang DROPPED
         student.setDeletedAt(java.time.LocalDateTime.now());
-        student.setOverallStatus(OverallStatus.INACTIVE);
+        student.setOverallStatus(OverallStatus.DROPPED);
 
         // 4. Lưu vào database
         studentRepo.save(student);
-        log.info("✅ Đã xóa mềm học viên (status -> INACTIVE) - Student ID: {} - {}", student.getStudentId(), student.getFullName());
+        log.info("✅ Đã xóa mềm học viên (status -> DROPPED) - Student ID: {} - {}", student.getStudentId(), student.getFullName());
     }
 
     @Override
@@ -678,9 +685,9 @@ public class StudentServiceImpl implements StudentService {
     @Override
     @Transactional(readOnly = true)
     public List<StudentWithEnrollmentsResponse> getAllStudentsWithEnrollments() {
-        log.info("📋 Lấy danh sách tất cả học viên với enrollments");
+        log.info("📋 Lấy danh sách tất cả học viên với enrollments (chưa bị xóa mềm)");
 
-        return studentRepo.findAll().stream()
+        return studentRepo.findAllActiveStudents().stream()
                 .map(this::toStudentWithEnrollmentsResponse)
                 .collect(Collectors.toList());
     }
