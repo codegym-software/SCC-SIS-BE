@@ -3,6 +3,7 @@ package com.example.sis.dtos.program;
 import com.example.sis.models.Program.DeliveryMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -21,6 +22,7 @@ public class CreateProgramRequest {
     private String description;
 
     @NotNull(message = "Thời gian (giờ) không được để trống")
+    @Positive(message = "Thời gian (giờ) phải là số dương")
     private Integer durationHours;
 
     @NotNull(message = "Hình thức học không được để trống")

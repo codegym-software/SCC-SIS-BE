@@ -55,12 +55,8 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        try {
-            StudentResponse response = studentService.createStudent(request, createdByUserId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
+        StudentResponse response = studentService.createStudent(request, createdByUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

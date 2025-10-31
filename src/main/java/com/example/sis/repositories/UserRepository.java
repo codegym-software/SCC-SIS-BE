@@ -11,6 +11,17 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Integer> {
 
     boolean existsByEmail(String email);
+
+    /**
+     * Kiểm tra email đã tồn tại (case-insensitive, không bao gồm người dùng đã xóa mềm)
+     */
+    @Query("""
+        SELECT COUNT(u) > 0
+        FROM User u
+        WHERE LOWER(u.email) = LOWER(:email)
+          AND u.deletedAt IS NULL
+        """)
+    boolean existsByEmailIgnoreCase(@Param("email") String email);
     boolean existsByKeycloakUserId(String keycloakUserId);
     Optional<User> findByEmail(String email);
 
