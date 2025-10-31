@@ -62,5 +62,27 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
         ORDER BY ar.createdAt DESC
         """)
     List<AttendanceRecord> findByStudentId(@Param("studentId") Integer studentId);
+
+    /**
+     * Lấy lịch sử điểm danh của một học viên trong một lớp (thông qua enrollment)
+     */
+    List<AttendanceRecord> findByEnrollment_EnrollmentIdAndDeletedFalseOrderBySession_AttendanceDateDesc(Integer enrollmentId);
+
+    /**
+     * Lấy TẤT CẢ lịch sử điểm danh của một học viên trong một lớp cụ thể
+     * (không phụ thuộc vào enrollment_id, lấy theo student_id + class_id)
+     */
+    @Query("""
+        SELECT ar FROM AttendanceRecord ar
+        JOIN ar.session s
+        WHERE ar.student.studentId = :studentId
+          AND s.classEntity.classId = :classId
+          AND ar.deleted = false
+        ORDER BY s.attendanceDate DESC
+        """)
+    List<AttendanceRecord> findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+        @Param("studentId") Integer studentId,
+        @Param("classId") Integer classId
+    );
 }
 

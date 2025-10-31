@@ -384,5 +384,68 @@ public class AttendanceServiceImpl implements AttendanceService {
         response.setAbsentCount(session.getAbsentCount());
         return response;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentAttendanceHistoryResponse getStudentAttendanceHistory(Integer studentId, Integer classId) {
+        // Validate student exists
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found: " + studentId));
+
+        // Validate class exists
+        ClassEntity classEntity = classRepo.findById(classId)
+                .orElseThrow(() -> new NotFoundException("Class not found: " + classId));
+
+        // Validate student has at least one enrollment (active or revoked) in this class
+        List<Enrollment> enrollments = enrollmentRepo.findByStudent_StudentIdAndClassEntity_ClassId(studentId, classId);
+        if (enrollments.isEmpty()) {
+            throw new NotFoundException("Student is not enrolled in this class");
+        }
+
+        // Get ALL attendance records for this student in this class
+        // (không phụ thuộc vào enrollment_id cụ thể)
+        List<AttendanceRecord> records = recordRepo.findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+                studentId, classId);
+
+        // Calculate statistics
+        int totalSessions = records.size();
+        int presentCount = 0;
+        int absentCount = 0;
+
+        for (AttendanceRecord record : records) {
+            if (record.getStatus() == AttendanceStatus.PRESENT) {
+                presentCount++;
+            } else {
+                absentCount++;
+            }
+        }
+
+        // Map to detailed records
+        List<StudentAttendanceHistoryResponse.AttendanceDetail> details = new ArrayList<>();
+        for (AttendanceRecord record : records) {
+            StudentAttendanceHistoryResponse.AttendanceDetail detail = 
+                new StudentAttendanceHistoryResponse.AttendanceDetail();
+            detail.setSessionId(record.getSession().getSessionId());
+            detail.setAttendanceDate(record.getSession().getAttendanceDate());
+            detail.setStatus(record.getStatus());
+            detail.setNotes(record.getNotes());
+            detail.setTeacherName(record.getSession().getTeacher().getFullName());
+            details.add(detail);
+        }
+
+        // Build response
+        StudentAttendanceHistoryResponse response = new StudentAttendanceHistoryResponse();
+        response.setStudentId(student.getStudentId());
+        response.setStudentName(student.getFullName());
+        response.setStudentCode("SV" + String.format("%03d", student.getStudentId()));
+        response.setClassId(classEntity.getClassId());
+        response.setClassName(classEntity.getName());
+        response.setTotalSessions(totalSessions);
+        response.setPresentCount(presentCount);
+        response.setAbsentCount(absentCount);
+        response.setRecords(details);
+        
+        return response;
+    }
 }
 

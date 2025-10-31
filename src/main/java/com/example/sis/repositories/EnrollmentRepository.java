@@ -31,11 +31,13 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
         FROM Enrollment e
         JOIN e.student s
         WHERE e.classEntity.classId = :classId
+          AND e.revokedAt IS NULL
         """,
             countQuery = """
         SELECT COUNT(e)
         FROM Enrollment e
         WHERE e.classEntity.classId = :classId
+          AND e.revokedAt IS NULL
         """
     )
     Page<EnrollmentListView> pageByClass(Integer classId, Pageable pageable);
@@ -56,12 +58,14 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
         JOIN e.student s
         WHERE e.classEntity.classId = :classId
           AND e.status = :status
+          AND e.revokedAt IS NULL
         """,
             countQuery = """
         SELECT COUNT(e)
         FROM Enrollment e
         WHERE e.classEntity.classId = :classId
           AND e.status = :status
+          AND e.revokedAt IS NULL
         """
     )
     Page<EnrollmentListView> pageByClassAndStatus(Integer classId, EnrollmentStatus status, Pageable pageable);
@@ -127,4 +131,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
             Integer classId, EnrollmentStatus status);
     
     List<Enrollment> findByStudent_StudentIdAndRevokedAtIsNull(Integer studentId);
+    
+    // Method for attendance history - chỉ lấy enrollment chưa bị revoke (active)
+    Optional<Enrollment> findFirstByStudent_StudentIdAndClassEntity_ClassIdAndRevokedAtIsNullOrderByEnrolledAtDesc(
+            Integer studentId, Integer classId);
+    
+    // Method to get all enrollments (including revoked) for a student in a class
+    List<Enrollment> findByStudent_StudentIdAndClassEntity_ClassId(
+            Integer studentId, Integer classId);
 }
