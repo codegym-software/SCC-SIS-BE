@@ -41,5 +41,11 @@ public interface AttendanceService {
      * DELETE /api/attendance-sessions/{session_id}
      */
     void deleteSession(Integer sessionId, Integer currentUserId);
+
+    /**
+     * Lấy lịch sử điểm danh của học viên trong một lớp
+     * GET /api/students/{studentId}/classes/{classId}/attendance
+     */
+    StudentAttendanceHistoryResponse getStudentAttendanceHistory(Integer studentId, Integer classId);
 }
 

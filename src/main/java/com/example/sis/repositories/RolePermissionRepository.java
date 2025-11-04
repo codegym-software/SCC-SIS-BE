@@ -144,4 +144,21 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
         ORDER BY rp.role.roleId, p.category, p.name
         """)
     List<RolePermission> findByRoleIdInWithPermission(@Param("roleIds") List<Integer> roleIds);
+
+    // ---- NEW: Check if user has permission via their active roles ----
+    @Query("""
+        SELECT CASE WHEN EXISTS (
+            SELECT 1 FROM RolePermission rp
+            JOIN rp.role r
+            JOIN rp.permission p
+            JOIN UserRole ur ON ur.role.roleId = r.roleId
+            WHERE ur.user.keycloakUserId = :keycloakUserId
+              AND ur.revokedAt IS NULL
+              AND r.active = true
+              AND p.code = :permissionCode
+              AND p.active = true
+        ) THEN true ELSE false END
+        """)
+    boolean userHasPermissionByKeycloakId(@Param("keycloakUserId") String keycloakUserId,
+                                          @Param("permissionCode") String permissionCode);
 }

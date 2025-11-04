@@ -50,6 +50,9 @@ public interface UserRoleService {
     /** List active roles of a user (ordered by assignedAt DESC). */
     List<UserRoleResponse> getUserRolesByUserId(Integer userId);
 
+    /** List revoked roles of a user (to check which roles cannot be re-assigned). */
+    List<UserRoleResponse> getRevokedRolesByUserId(Integer userId);
+
     /** Check if user has a role at a center (centerId may be null for GLOBAL). */
     boolean hasRoleAtCenter(Integer userId, String roleCode, Integer centerId);
 
