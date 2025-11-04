@@ -256,27 +256,31 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         List<GradeEntry> gradeEntries = gradeEntryRepository
                 .findByClassEntity_ClassIdAndModule_ModuleIdOrderByEntryDateDesc(classId, moduleId);
 
-        // 7. Lấy grade records từ các grade entries, ưu tiên record mới nhất cho mỗi student
-        // Map để track student đã có record chưa (key: studentId, value: GradeRecordResponse)
-        java.util.Map<Integer, GradeRecordResponse> studentRecordsMap = new java.util.HashMap<>();
+        // 7. Lấy TẤT CẢ grade records từ TẤT CẢ grade entries
+        // Frontend cần tất cả records để có thể group theo entryDate và hiển thị dropdown
+        List<GradeRecordResponse> gradeRecords = new ArrayList<>();
         
-        // Duyệt từ entry mới nhất đến cũ nhất, chỉ lấy record của student chưa có
+        // Duyệt qua tất cả grade entries và lấy tất cả records
         for (GradeEntry gradeEntry : gradeEntries) {
             List<GradeRecord> records = gradeRecordRepository
                     .findByGradeEntry_GradeEntryIdOrderByStudent_FullName(gradeEntry.getGradeEntryId());
             
+            // Convert tất cả records thành response (bao gồm entryDate)
             for (GradeRecord record : records) {
-                Integer studentId = record.getStudent().getStudentId();
-                // Chỉ thêm nếu student chưa có record (ưu tiên record từ entry mới nhất)
-                if (!studentRecordsMap.containsKey(studentId)) {
-                    studentRecordsMap.put(studentId, toRecordResponse(record));
-                }
+                gradeRecords.add(toRecordResponse(record));
             }
         }
 
-        // 8. Convert map thành list và sắp xếp theo tên học viên
-        List<GradeRecordResponse> gradeRecords = new ArrayList<>(studentRecordsMap.values());
+        // 8. Sắp xếp: đầu tiên theo entryDate (mới nhất trước), sau đó theo tên học viên
         gradeRecords.sort((a, b) -> {
+            // So sánh entryDate trước (nếu có)
+            String entryDateA = a.getEntryDate() != null ? a.getEntryDate() : "";
+            String entryDateB = b.getEntryDate() != null ? b.getEntryDate() : "";
+            int dateCompare = entryDateB.compareTo(entryDateA); // DESC: mới nhất trước
+            if (dateCompare != 0) {
+                return dateCompare;
+            }
+            // Nếu entryDate giống nhau, sắp xếp theo tên học viên
             String nameA = a.getStudentName() != null ? a.getStudentName() : "";
             String nameB = b.getStudentName() != null ? b.getStudentName() : "";
             return nameA.compareToIgnoreCase(nameB);
@@ -479,6 +483,10 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         response.setPracticeScore(gr.getPracticeScore());
         response.setFinalScore(gr.getFinalScore());
         response.setPassStatus(gr.getPassStatus() != null ? gr.getPassStatus().name() : null);
+        // Set entryDate từ GradeEntry
+        if (gr.getGradeEntry() != null && gr.getGradeEntry().getEntryDate() != null) {
+            response.setEntryDate(gr.getGradeEntry().getEntryDate().toString());
+        }
         return response;
     }
 }
