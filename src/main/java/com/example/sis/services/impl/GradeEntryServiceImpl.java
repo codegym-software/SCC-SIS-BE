@@ -30,10 +30,18 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -488,6 +496,264 @@ public class GradeEntryServiceImpl implements GradeEntryService {
             response.setEntryDate(gr.getGradeEntry().getEntryDate().toString());
         }
         return response;
+    }
+
+    // ===== Excel Import/Export Methods =====
+
+    @Override
+    public GradeEntryDetailResponse importGradesFromExcel(
+            MultipartFile file, Integer classId, Integer moduleId, 
+            LocalDate entryDate, Integer currentUserId) throws IOException {
+        
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        // 1. Validate class và module
+        ClassEntity classEntity = classRepository.findById(classId)
+                .orElseThrow(() -> new NotFoundException("Class not found: " + classId));
+        Module module = moduleRepository.findById(moduleId)
+                .orElseThrow(() -> new NotFoundException("Module not found: " + moduleId));
+
+        // 2. Lấy danh sách học viên ACTIVE trong lớp
+        List<Enrollment> activeEnrollments = enrollmentRepository
+                .findByClassEntity_ClassIdAndStatusAndRevokedAtIsNull(classId, EnrollmentStatus.ACTIVE);
+        
+        // Tạo map studentId -> Student để tìm nhanh
+        Map<Integer, Student> studentMap = activeEnrollments.stream()
+                .map(Enrollment::getStudent)
+                .collect(Collectors.toMap(
+                    Student::getStudentId, 
+                    s -> s,
+                    (existing, replacement) -> existing));
+
+        // 3. Đọc Excel file
+        List<GradeRecordRequest> gradeRecords = new ArrayList<>();
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet == null) {
+                throw new IllegalArgumentException("Excel sheet is empty");
+            }
+
+            // Đọc từ dòng 1 (dòng 0 là header)
+            // Format: Student ID | Student Name | Theory Score | Practice Score
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                try {
+                    // Cột 0: Student ID
+                    Integer studentId = getIntegerCell(row.getCell(0));
+                    if (studentId == null) continue;
+
+                    // Tìm student theo ID
+                    Student student = studentMap.get(studentId);
+                    if (student == null) {
+                        // Skip nếu không tìm thấy student
+                        continue;
+                    }
+
+                    // Cột 2: Theory Score (0-100)
+                    BigDecimal theoryScore = getNumericCell(row.getCell(2));
+                    // Cột 3: Practice Score (0-100)
+                    BigDecimal practiceScore = getNumericCell(row.getCell(3));
+
+                    // Validate điểm trong khoảng 0-100
+                    if (theoryScore != null && (theoryScore.compareTo(BigDecimal.ZERO) < 0 || theoryScore.compareTo(new BigDecimal("100")) > 0)) {
+                        continue; // Skip dòng có điểm không hợp lệ
+                    }
+                    if (practiceScore != null && (practiceScore.compareTo(BigDecimal.ZERO) < 0 || practiceScore.compareTo(new BigDecimal("100")) > 0)) {
+                        continue; // Skip dòng có điểm không hợp lệ
+                    }
+
+                    GradeRecordRequest record = new GradeRecordRequest();
+                    record.setStudentId(studentId);
+                    record.setTheoryScore(theoryScore);
+                    record.setPracticeScore(practiceScore);
+                    gradeRecords.add(record);
+                } catch (Exception e) {
+                    // Skip dòng lỗi
+                    continue;
+                }
+            }
+        }
+
+        // 4. Tạo CreateGradeEntryRequest và gọi createGradeEntry
+        CreateGradeEntryRequest request = new CreateGradeEntryRequest();
+        request.setClassId(classId);
+        request.setModuleId(moduleId);
+        request.setEntryDate(entryDate);
+        request.setGradeRecords(gradeRecords);
+
+        return createGradeEntry(request, currentUserId);
+    }
+
+    @Override
+    public byte[] generateGradeImportTemplate(Integer classId, Integer moduleId) throws IOException {
+        // Lấy danh sách học viên trong lớp
+        List<Enrollment> enrollments = enrollmentRepository
+                .findByClassEntity_ClassIdAndStatusAndRevokedAtIsNull(classId, EnrollmentStatus.ACTIVE);
+        
+        try (Workbook workbook = new XSSFWorkbook(); 
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Grade Import Template");
+
+            // Header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            // Header row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"Student ID", "Student Name", "Theory Score (0-100)", "Practice Score (0-100)"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 6000);
+            }
+
+            // Data rows với danh sách học viên
+            int rowNum = 1;
+            for (Enrollment enrollment : enrollments) {
+                Student student = enrollment.getStudent();
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(student.getStudentId());
+                row.createCell(1).setCellValue(student.getFullName());
+                // Để trống điểm để user điền
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Override
+    public byte[] exportGradesToExcel(Integer classId, Integer semester, Integer moduleId, LocalDate entryDate) throws IOException {
+        // Validate: nếu đã chọn module thì phải có entryDate
+        if (moduleId != null && entryDate == null) {
+            throw new IllegalArgumentException("entryDate is required when moduleId is provided");
+        }
+
+        StudentGradesResponse response = getStudentGrades(classId, semester, moduleId);
+        
+        if (response.getGradeRecords() == null || response.getGradeRecords().isEmpty()) {
+            throw new IllegalArgumentException("No grade records to export");
+        }
+
+        // Filter theo entryDate nếu có
+        List<GradeRecordResponse> recordsToExport = response.getGradeRecords();
+        if (entryDate != null) {
+            String entryDateStr = entryDate.toString();
+            recordsToExport = recordsToExport.stream()
+                    .filter(record -> entryDateStr.equals(record.getEntryDate()))
+                    .collect(Collectors.toList());
+            
+            if (recordsToExport.isEmpty()) {
+                throw new IllegalArgumentException("No grade records found for the selected date");
+            }
+        }
+
+        try (Workbook workbook = new XSSFWorkbook(); 
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Grades Export");
+
+            // Header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            // Header row
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"Student ID", "Student Name", "Theory Score", "Practice Score", "Final Score", "Pass Status"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 5000);
+            }
+
+            // Data rows
+            int rowNum = 1;
+            for (GradeRecordResponse record : recordsToExport) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(record.getStudentId());
+                row.createCell(1).setCellValue(record.getStudentName());
+                if (record.getTheoryScore() != null) {
+                    row.createCell(2).setCellValue(record.getTheoryScore().doubleValue());
+                }
+                if (record.getPracticeScore() != null) {
+                    row.createCell(3).setCellValue(record.getPracticeScore().doubleValue());
+                }
+                if (record.getFinalScore() != null) {
+                    row.createCell(4).setCellValue(record.getFinalScore().doubleValue());
+                }
+                row.createCell(5).setCellValue(record.getPassStatus() != null ? record.getPassStatus() : "");
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    // Helper methods để đọc Excel
+    private String getStringCell(Cell cell) {
+        if (cell == null) return null;
+        CellType type = cell.getCellType();
+        switch (type) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return String.valueOf(cell.getLocalDateTimeCellValue().toLocalDate());
+                } else {
+                    double d = cell.getNumericCellValue();
+                    String s = String.valueOf((long) d);
+                    return s;
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            default:
+                return null;
+        }
+    }
+
+    private Integer getIntegerCell(Cell cell) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return (int) cell.getNumericCellValue();
+            } else if (cell.getCellType() == CellType.STRING) {
+                String value = cell.getStringCellValue().trim();
+                if (value.isEmpty()) return null;
+                return Integer.parseInt(value);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
+    private BigDecimal getNumericCell(Cell cell) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return BigDecimal.valueOf(cell.getNumericCellValue());
+            } else if (cell.getCellType() == CellType.STRING) {
+                String value = cell.getStringCellValue().trim();
+                if (value.isEmpty()) return null;
+                return new BigDecimal(value);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
     }
 }
 

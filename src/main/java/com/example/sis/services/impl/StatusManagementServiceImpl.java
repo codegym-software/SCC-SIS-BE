@@ -179,10 +179,10 @@ public class StatusManagementServiceImpl implements StatusManagementService {
             return OverallStatus.ACTIVE;
         } else if (graduatedCount > 0 && suspendedCount == 0 && droppedCount == 0) {
             return OverallStatus.GRADUATED;
-        } else if (suspendedCount > 0) {
-            return OverallStatus.PENDING; // Bảo lưu -> đang chờ
-        } else if (droppedCount > 0) {
-            return OverallStatus.DROPPED;
+        } else if (suspendedCount > 0 || droppedCount > 0) {
+            // Enrollment SUSPENDED hoặc DROPPED -> Student PENDING (Đang chờ)
+            // Student DROPPED chỉ set thủ công qua nút "Thay đổi trạng thái"
+            return OverallStatus.PENDING;
         } else {
             return OverallStatus.PENDING; // Mặc định
         }
