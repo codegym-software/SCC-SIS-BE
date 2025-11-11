@@ -12,6 +12,7 @@ public class AttendanceRecordResponse {
     private Integer enrollmentId;
     private Integer studentId;
     private String studentName;
+    private String studentCode;
     private String studentEmail;
     private String status;
     private String notes;
@@ -26,6 +27,7 @@ public class AttendanceRecordResponse {
             Integer enrollmentId,
             Integer studentId,
             String studentName,
+            String studentCode,
             String studentEmail,
             String status,
             String notes) {
@@ -34,6 +36,7 @@ public class AttendanceRecordResponse {
         this.enrollmentId = enrollmentId;
         this.studentId = studentId;
         this.studentName = studentName;
+        this.studentCode = studentCode;
         this.studentEmail = studentEmail;
         this.status = status;
         this.notes = notes;
@@ -46,6 +49,7 @@ public class AttendanceRecordResponse {
             Integer enrollmentId,
             Integer studentId,
             String studentName,
+            String studentCode,
             String studentEmail,
             AttendanceStatus status,
             String notes) {
@@ -54,6 +58,7 @@ public class AttendanceRecordResponse {
         this.enrollmentId = enrollmentId;
         this.studentId = studentId;
         this.studentName = studentName;
+        this.studentCode = studentCode;
         this.studentEmail = studentEmail;
         this.status = status != null ? status.name() : null;
         this.notes = notes;
@@ -98,6 +103,14 @@ public class AttendanceRecordResponse {
 
     public void setStudentName(String studentName) {
         this.studentName = studentName;
+    }
+
+    public String getStudentCode() {
+        return studentCode;
+    }
+
+    public void setStudentCode(String studentCode) {
+        this.studentCode = studentCode;
     }
 
     public String getStudentEmail() {

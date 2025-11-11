@@ -19,6 +19,9 @@ public class GradeEntryResponse {
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer semester;
+    private Integer passCount;
+    private Integer failCount;
 
     public Integer getGradeEntryId() {
         return gradeEntryId;
@@ -106,6 +109,30 @@ public class GradeEntryResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public Integer getPassCount() {
+        return passCount;
+    }
+
+    public void setPassCount(Integer passCount) {
+        this.passCount = passCount;
+    }
+
+    public Integer getFailCount() {
+        return failCount;
+    }
+
+    public void setFailCount(Integer failCount) {
+        this.failCount = failCount;
     }
 }
 

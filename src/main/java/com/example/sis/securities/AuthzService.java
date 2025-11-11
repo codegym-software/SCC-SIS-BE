@@ -57,6 +57,17 @@ public class AuthzService {
         return userRoleRepo.userHasActiveRoleByKeycloakIdAndRoleCode(sub, roleCode);
     }
 
+    /** Kiểm tra có bất kỳ role nào trong danh sách không */
+    public boolean hasAnyRole(Authentication authentication, String... roleCodes) {
+        if (roleCodes == null || roleCodes.length == 0) return false;
+        for (String roleCode : roleCodes) {
+            if (hasRole(authentication, roleCode)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ===================== PERMISSION-LEVEL CHECKS =====================
 
     /**
