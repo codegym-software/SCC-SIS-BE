@@ -45,6 +45,12 @@ public class StatusManagementServiceImpl implements StatusManagementService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new RuntimeException("Enrollment không tồn tại với ID: " + enrollmentId));
         
+        // Kiểm tra: Nếu học viên đã DROPPED thì không cho phép sửa enrollmentStatus
+        Student student = enrollment.getStudent();
+        if (student.getOverallStatus() == OverallStatus.DROPPED) {
+            throw new RuntimeException("Không thể thay đổi trạng thái enrollment vì học viên đã nghỉ học (DROPPED)");
+        }
+        
         // Lưu trạng thái cũ để so sánh
         EnrollmentStatus oldStatus = enrollment.getStatus();
         

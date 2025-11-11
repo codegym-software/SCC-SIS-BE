@@ -128,6 +128,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BadRequestException("Enrollment does not belong to class " + classId);
         }
 
+        // Kiểm tra: Nếu học viên đã DROPPED thì không cho phép sửa enrollmentStatus
+        Student student = e.getStudent();
+        if (student.getOverallStatus() == com.example.sis.enums.OverallStatus.DROPPED) {
+            throw new BadRequestException("Không thể thay đổi trạng thái enrollment vì học viên đã nghỉ học (DROPPED)");
+        }
+
         EnrollmentStatus targetStatus = (req.getStatus() != null) ? req.getStatus() : e.getStatus();
 
         // (1) Không cho set leftAt khi status=ACTIVE
@@ -218,6 +224,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         r.setStudentId(v.getStudentId());
         r.setStudentName(v.getStudentName());
         r.setStudentEmail(v.getStudentEmail());
+        // Lấy student để có overallStatus
+        Student student = studentRepo.findById(v.getStudentId()).orElse(null);
+        if (student != null) {
+            r.setStudentOverallStatus(student.getOverallStatus().name());
+        }
         r.setStatus(v.getStatus().name());
         r.setEnrolledAt(v.getEnrolledAt());
         r.setLeftAt(v.getLeftAt());
@@ -232,6 +243,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         r.setStudentId(e.getStudent().getStudentId());
         r.setStudentName(e.getStudent().getFullName());
         r.setStudentEmail(e.getStudent().getEmail());
+        r.setStudentOverallStatus(e.getStudent().getOverallStatus().name());
         r.setStatus(e.getStatus().name());
         r.setEnrolledAt(e.getEnrolledAt());
         r.setLeftAt(e.getLeftAt());

@@ -13,7 +13,8 @@ public class EnrollmentResponse {
     private Integer studentId;
     private String studentName;
     private String studentEmail;
-    private String status;
+    private String studentOverallStatus;  // Trạng thái tổng quan của học viên (ACTIVE, DROPPED, etc.)
+    private String status;  // Trạng thái enrollment trong lớp
     private LocalDate enrolledAt;
     private LocalDate leftAt;
     private String note;
@@ -51,6 +52,13 @@ public class EnrollmentResponse {
     }
     public void setStudentEmail(String studentEmail) {
         this.studentEmail = studentEmail;
+    }
+
+    public String getStudentOverallStatus() {
+        return studentOverallStatus;
+    }
+    public void setStudentOverallStatus(String studentOverallStatus) {
+        this.studentOverallStatus = studentOverallStatus;
     }
 
     public String getStatus() {
