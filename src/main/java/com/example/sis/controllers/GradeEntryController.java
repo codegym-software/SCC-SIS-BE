@@ -105,10 +105,10 @@ public class GradeEntryController {
      * GET /api/grade-entries/student/{studentId}
      * Lấy tất cả điểm thi của một học viên cụ thể
      * Trả về danh sách điểm theo từng module
-     * Phân quyền: LECTURER hoặc ADMIN
+     * Phân quyền: LECTURER, ACADEMIC_STAFF, SUPER_ADMIN hoặc STUDENT (xem điểm của chính mình)
      */
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'LECTURER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'LECTURER', 'ACADEMIC_STAFF', 'SUPER_ADMIN', 'STUDENT')")
     public ResponseEntity<List<GradeRecordResponse>> getStudentGradesByStudentId(
             @PathVariable Integer studentId) {
         List<GradeRecordResponse> grades = gradeEntryService.getStudentGradesByStudentId(studentId);
