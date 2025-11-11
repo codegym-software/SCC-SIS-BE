@@ -9,6 +9,7 @@ import com.example.sis.dtos.grade.StudentGradesResponse;
 import com.example.sis.dtos.grade.UpdateGradeRecordsRequest;
 import com.example.sis.dtos.module.ModuleResponse;
 import com.example.sis.enums.EnrollmentStatus;
+import com.example.sis.enums.PassStatus;
 import com.example.sis.exceptions.BadRequestException;
 import com.example.sis.exceptions.NotFoundException;
 import com.example.sis.models.ClassEntity;
@@ -410,26 +411,25 @@ public class GradeEntryServiceImpl implements GradeEntryService {
             gradeRecord.setPracticeScore(recordRequest.getPracticeScore());
             gradeRecord.setUpdatedAt(LocalDateTime.now());
             
-            updatedRecords.add(gradeRecordRepository.save(gradeRecord));
+            GradeRecord savedRecord = gradeRecordRepository.save(gradeRecord);
+            updatedRecords.add(savedRecord);
         }
 
-        // 10. Xóa các records không có trong request (optional - có thể giữ lại nếu muốn)
-        // Nhưng theo logic thông thường, khi update thì nên chỉ giữ lại những records trong request
-        var requestStudentIds = request.getGradeRecords().stream()
-                .map(GradeRecordRequest::getStudentId)
-                .collect(Collectors.toSet());
-        
-        for (GradeRecord existingRecord : existingRecords) {
-            if (!requestStudentIds.contains(existingRecord.getStudent().getStudentId())) {
-                gradeRecordRepository.delete(existingRecord);
-            }
-        }
+        // 10. KHÔNG xóa các records không có trong request
+        // Vì đây là API update partial (chỉ update một số học viên), không phải replace toàn bộ
+        // Nếu muốn xóa điểm của học viên, frontend nên gửi explicit null hoặc dùng API riêng
+        // Giữ nguyên các grade records của học viên khác
 
         // 11. Update updatedAt của grade entry
         gradeEntry.setUpdatedAt(LocalDateTime.now());
         gradeEntryRepository.save(gradeEntry);
 
-        // 12. Fetch lại để lấy finalScore và passStatus từ generated columns
+        // 12. Flush changes to database và clear persistence context
+        // Điều này đảm bảo generated columns (finalScore, passStatus) được tính toán lại từ database
+        entityManager.flush();
+        entityManager.clear();
+
+        // 13. Fetch lại để lấy finalScore và passStatus từ generated columns
         gradeEntry = gradeEntryRepository.findById(gradeEntry.getGradeEntryId())
                 .orElseThrow(() -> new NotFoundException("Grade entry not found after update"));
 
@@ -446,11 +446,25 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         response.setModuleId(ge.getModule().getModuleId());
         response.setModuleCode(ge.getModule().getCode());
         response.setModuleName(ge.getModule().getName());
+        response.setSemester(ge.getModule().getSemester());
         response.setEntryDate(ge.getEntryDate());
         response.setCreatedBy(ge.getCreatedBy().getUserId());
         response.setCreatedByName(ge.getCreatedBy().getFullName());
         response.setCreatedAt(ge.getCreatedAt());
         response.setUpdatedAt(ge.getUpdatedAt());
+        
+        // Tính pass/fail count
+        List<GradeRecord> records = gradeRecordRepository
+                .findByGradeEntry_GradeEntryIdOrderByStudent_FullName(ge.getGradeEntryId());
+        long passCount = records.stream()
+                .filter(r -> r.getPassStatus() == PassStatus.PASS)
+                .count();
+        long failCount = records.stream()
+                .filter(r -> r.getPassStatus() == PassStatus.FAIL)
+                .count();
+        response.setPassCount((int) passCount);
+        response.setFailCount((int) failCount);
+        
         return response;
     }
 
@@ -754,6 +768,51 @@ public class GradeEntryServiceImpl implements GradeEntryService {
             return null;
         }
         return null;
+    }
+
+    @Override
+    public List<GradeRecordResponse> getStudentGradesByStudentId(Integer studentId) {
+        // Tìm tất cả grade records của học viên
+        List<GradeRecord> gradeRecords = gradeRecordRepository.findByStudent_StudentId(studentId);
+        
+        // Map sang GradeRecordResponse
+        return gradeRecords.stream()
+                .map(this::toRecordResponseWithModuleInfo)
+                .collect(Collectors.toList());
+    }
+
+    private GradeRecordResponse toRecordResponseWithModuleInfo(GradeRecord gr) {
+        GradeRecordResponse response = new GradeRecordResponse();
+        response.setGradeRecordId(gr.getGradeRecordId());
+        response.setStudentId(gr.getStudent().getStudentId());
+        response.setStudentName(gr.getStudent().getFullName());
+        response.setStudentEmail(gr.getStudent().getEmail());
+        response.setTheoryScore(gr.getTheoryScore());
+        response.setPracticeScore(gr.getPracticeScore());
+        response.setFinalScore(gr.getFinalScore());
+        response.setPassStatus(gr.getPassStatus() != null ? gr.getPassStatus().name() : null);
+        
+        // Set thông tin từ GradeEntry
+        if (gr.getGradeEntry() != null) {
+            GradeEntry entry = gr.getGradeEntry();
+            if (entry.getEntryDate() != null) {
+                response.setEntryDate(entry.getEntryDate().toString());
+            }
+            
+            // Thêm thông tin module và class
+            if (entry.getModule() != null) {
+                response.setModuleId(entry.getModule().getModuleId());
+                response.setModuleName(entry.getModule().getName());
+                response.setModuleCode(entry.getModule().getCode());
+                response.setSemester(entry.getModule().getSemester());
+            }
+            if (entry.getClassEntity() != null) {
+                response.setClassId(entry.getClassEntity().getClassId());
+                response.setClassName(entry.getClassEntity().getName());
+            }
+        }
+        
+        return response;
     }
 }
 

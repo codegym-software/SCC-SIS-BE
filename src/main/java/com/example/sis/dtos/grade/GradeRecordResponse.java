@@ -16,6 +16,14 @@ public class GradeRecordResponse {
     private BigDecimal finalScore;
     private String passStatus; // PASS or FAIL
     private String entryDate; // ISO date: "2025-01-15" - ngày thi của đợt nhập điểm này
+    
+    // Thông tin module và class (cho API lấy điểm theo student)
+    private Integer moduleId;
+    private String moduleCode;
+    private String moduleName;
+    private Integer semester;
+    private Integer classId;
+    private String className;
 
     public Integer getGradeRecordId() {
         return gradeRecordId;
@@ -87,6 +95,54 @@ public class GradeRecordResponse {
 
     public void setEntryDate(String entryDate) {
         this.entryDate = entryDate;
+    }
+
+    public Integer getModuleId() {
+        return moduleId;
+    }
+
+    public void setModuleId(Integer moduleId) {
+        this.moduleId = moduleId;
+    }
+
+    public String getModuleCode() {
+        return moduleCode;
+    }
+
+    public void setModuleCode(String moduleCode) {
+        this.moduleCode = moduleCode;
+    }
+
+    public String getModuleName() {
+        return moduleName;
+    }
+
+    public void setModuleName(String moduleName) {
+        this.moduleName = moduleName;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public Integer getClassId() {
+        return classId;
+    }
+
+    public void setClassId(Integer classId) {
+        this.classId = classId;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 }
 

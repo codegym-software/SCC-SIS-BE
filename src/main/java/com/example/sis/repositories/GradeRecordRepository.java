@@ -23,5 +23,8 @@ public interface GradeRecordRepository extends JpaRepository<GradeRecord, Intege
 
     // Tìm grade records theo student (để xem lịch sử điểm của một học viên)
     List<GradeRecord> findByStudent_StudentIdOrderByGradeEntry_EntryDateDesc(Integer studentId);
+
+    // Tìm tất cả grade records của một student
+    List<GradeRecord> findByStudent_StudentId(Integer studentId);
 }
 
