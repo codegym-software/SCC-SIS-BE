@@ -15,11 +15,11 @@ public class GradeRecordRequest {
     private Integer studentId;
 
     @DecimalMin(value = "0.0", message = "theoryScore must be >= 0")
-    @DecimalMax(value = "100.0", message = "theoryScore must be <= 100")
+    @DecimalMax(value = "10.0", message = "theoryScore must be <= 10")
     private BigDecimal theoryScore;
 
     @DecimalMin(value = "0.0", message = "practiceScore must be >= 0")
-    @DecimalMax(value = "100.0", message = "practiceScore must be <= 100")
+    @DecimalMax(value = "10.0", message = "practiceScore must be <= 10")
     private BigDecimal practiceScore;
 
     public Integer getStudentId() {

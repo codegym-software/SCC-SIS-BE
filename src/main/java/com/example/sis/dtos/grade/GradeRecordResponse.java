@@ -15,6 +15,7 @@ public class GradeRecordResponse {
     private BigDecimal practiceScore;
     private BigDecimal finalScore;
     private String passStatus; // PASS or FAIL
+    private String entryDate; // ISO date: "2025-01-15" - ngày thi của đợt nhập điểm này
 
     public Integer getGradeRecordId() {
         return gradeRecordId;
@@ -78,6 +79,14 @@ public class GradeRecordResponse {
 
     public void setPassStatus(String passStatus) {
         this.passStatus = passStatus;
+    }
+
+    public String getEntryDate() {
+        return entryDate;
+    }
+
+    public void setEntryDate(String entryDate) {
+        this.entryDate = entryDate;
     }
 }
 
