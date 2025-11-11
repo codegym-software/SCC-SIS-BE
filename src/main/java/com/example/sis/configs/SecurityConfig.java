@@ -165,6 +165,9 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/grade-entries").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/grade-entries/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/grade-entries").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/grade-entries/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/grade-entries").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/grade-entries").authenticated()
 
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak

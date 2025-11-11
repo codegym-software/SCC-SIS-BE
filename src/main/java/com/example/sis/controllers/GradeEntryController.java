@@ -3,6 +3,7 @@ package com.example.sis.controllers;
 import com.example.sis.dtos.grade.CreateGradeEntryRequest;
 import com.example.sis.dtos.grade.GradeEntryDetailResponse;
 import com.example.sis.dtos.grade.GradeEntryResponse;
+import com.example.sis.dtos.grade.GradeRecordResponse;
 import com.example.sis.dtos.grade.StudentGradesResponse;
 import com.example.sis.dtos.grade.UpdateGradeRecordsRequest;
 import com.example.sis.repositories.UserRoleRepository;
@@ -98,6 +99,20 @@ public class GradeEntryController {
         StudentGradesResponse response = 
                 gradeEntryService.getStudentGrades(classId, semester, moduleId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/grade-entries/student/{studentId}
+     * Lấy tất cả điểm thi của một học viên cụ thể
+     * Trả về danh sách điểm theo từng module
+     * Phân quyền: LECTURER hoặc ADMIN
+     */
+    @GetMapping("/student/{studentId}")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'LECTURER', 'ADMIN')")
+    public ResponseEntity<List<GradeRecordResponse>> getStudentGradesByStudentId(
+            @PathVariable Integer studentId) {
+        List<GradeRecordResponse> grades = gradeEntryService.getStudentGradesByStudentId(studentId);
+        return ResponseEntity.ok(grades);
     }
 
     /**
