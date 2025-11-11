@@ -4,10 +4,13 @@ import com.example.sis.dtos.student.CreateStudentRequest;
 import com.example.sis.dtos.student.StudentResponse;
 import com.example.sis.dtos.student.StudentWithEnrollmentsResponse;
 import com.example.sis.dtos.student.UpdateStudentRequest;
+import com.example.sis.enums.EnrollmentStatus;
 import com.example.sis.enums.GenderType;
 import com.example.sis.enums.OverallStatus;
+import com.example.sis.models.Enrollment;
 import com.example.sis.models.Student;
 import com.example.sis.models.User;
+import com.example.sis.repositories.EnrollmentRepository;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.services.StudentService;
@@ -26,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +58,7 @@ public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepo;
     private final UserRepository userRepo;
+    private final EnrollmentRepository enrollmentRepo;
     private final KeycloakAdminClient kcAdmin;
     private final RoleRepository roleRepo;
     private final UserRoleRepository userRoleRepo;
@@ -63,11 +68,13 @@ public class StudentServiceImpl implements StudentService {
 
     public StudentServiceImpl(StudentRepository studentRepo, 
                              UserRepository userRepo,
+                             EnrollmentRepository enrollmentRepo,
                              KeycloakAdminClient kcAdmin,
                              RoleRepository roleRepo,
                              UserRoleRepository userRoleRepo) {
         this.studentRepo = studentRepo;
         this.userRepo = userRepo;
+        this.enrollmentRepo = enrollmentRepo;
         this.kcAdmin = kcAdmin;
         this.roleRepo = roleRepo;
         this.userRoleRepo = userRoleRepo;
@@ -625,11 +632,43 @@ public class StudentServiceImpl implements StudentService {
             }
         }
 
-        // 5. Lưu vào database
+        // 5. Nếu chuyển sang DROPPED, cập nhật tất cả enrollment sang DROPPED
+        if (newStatus == OverallStatus.DROPPED) {
+            List<Enrollment> activeEnrollments = enrollmentRepo.findByStudent_StudentIdAndRevokedAtIsNull(studentId);
+            
+            for (Enrollment enrollment : activeEnrollments) {
+                // Chỉ cập nhật các enrollment đang ACTIVE hoặc SUSPENDED
+                if (enrollment.getStatus() == EnrollmentStatus.ACTIVE || 
+                    enrollment.getStatus() == EnrollmentStatus.SUSPENDED) {
+                    
+                    enrollment.setStatus(EnrollmentStatus.DROPPED);
+                    enrollment.setLeftAt(LocalDate.now());
+                    enrollment.setUpdatedAt(LocalDateTime.now());
+                    
+                    // Thêm ghi chú ngày tháng
+                    String note = "Note: [" + LocalDate.now() + "]";
+                    if (enrollment.getNote() != null && !enrollment.getNote().isEmpty()) {
+                        enrollment.setNote(enrollment.getNote() + "\n" + note);
+                    } else {
+                        enrollment.setNote(note);
+                    }
+                    
+                    enrollmentRepo.save(enrollment);
+                    log.info("📝 Đã cập nhật enrollment {} của lớp {} sang DROPPED", 
+                            enrollment.getEnrollmentId(), 
+                            enrollment.getClassEntity().getClassId());
+                }
+            }
+            
+            log.info("✅ Đã cập nhật {} enrollment(s) sang DROPPED cho học viên ID: {}", 
+                    activeEnrollments.size(), studentId);
+        }
+
+        // 6. Lưu vào database
         student = studentRepo.save(student);
         log.info("✅ Đã cập nhật trạng thái học viên - Student ID: {} - {}", student.getStudentId(), student.getFullName());
 
-        // 6. Trả về response
+        // 7. Trả về response
         return toResponse(student);
     }
 

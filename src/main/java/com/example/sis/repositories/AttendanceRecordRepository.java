@@ -24,6 +24,7 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
             ar.enrollment.enrollmentId,
             ar.student.studentId,
             ar.student.fullName,
+            CONCAT('SV', LPAD(CAST(ar.student.studentId AS string), 3, '0')),
             ar.student.email,
             ar.status,
             ar.notes

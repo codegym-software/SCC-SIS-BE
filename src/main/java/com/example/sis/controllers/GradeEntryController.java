@@ -3,19 +3,26 @@ package com.example.sis.controllers;
 import com.example.sis.dtos.grade.CreateGradeEntryRequest;
 import com.example.sis.dtos.grade.GradeEntryDetailResponse;
 import com.example.sis.dtos.grade.GradeEntryResponse;
+import com.example.sis.dtos.grade.GradeRecordResponse;
 import com.example.sis.dtos.grade.StudentGradesResponse;
 import com.example.sis.dtos.grade.UpdateGradeRecordsRequest;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.securities.AuthzService;
 import com.example.sis.services.GradeEntryService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -95,6 +102,20 @@ public class GradeEntryController {
     }
 
     /**
+     * GET /api/grade-entries/student/{studentId}
+     * Lấy tất cả điểm thi của một học viên cụ thể
+     * Trả về danh sách điểm theo từng module
+     * Phân quyền: LECTURER, ACADEMIC_STAFF, SUPER_ADMIN hoặc STUDENT (xem điểm của chính mình)
+     */
+    @GetMapping("/student/{studentId}")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'LECTURER', 'ACADEMIC_STAFF', 'SUPER_ADMIN', 'STUDENT')")
+    public ResponseEntity<List<GradeRecordResponse>> getStudentGradesByStudentId(
+            @PathVariable Integer studentId) {
+        List<GradeRecordResponse> grades = gradeEntryService.getStudentGradesByStudentId(studentId);
+        return ResponseEntity.ok(grades);
+    }
+
+    /**
      * DELETE /api/grade-entries
      * Xóa đợt nhập điểm theo classId, moduleId và entryDate
      * Sẽ xóa cả grade_entry và tất cả grade_records trong đợt đó (cascade)
@@ -128,6 +149,90 @@ public class GradeEntryController {
 
         GradeEntryDetailResponse response = gradeEntryService.updateGradeRecords(request, currentUserId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/grade-entries/import
+     * Import điểm từ file Excel cho một đợt nhập điểm
+     * Phân quyền: LECTURER được phân công vào lớp
+     */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@authz.hasRole(authentication, 'LECTURER') and @authz.hasAcademicAccessForClass(authentication, #classId)")
+    public ResponseEntity<GradeEntryDetailResponse> importGradesFromExcel(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = true) Integer classId,
+            @RequestParam(required = true) Integer moduleId,
+            @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate entryDate,
+            Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            GradeEntryDetailResponse response = gradeEntryService.importGradesFromExcel(
+                file, classId, moduleId, entryDate, currentUserId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * GET /api/grade-entries/export-template
+     * Download Excel template để nhập điểm
+     * Phân quyền: LECTURER được phân công vào lớp
+     */
+    @GetMapping("/export-template")
+    @PreAuthorize("@authz.hasRole(authentication, 'LECTURER') and @authz.hasAcademicAccessForClass(authentication, #classId)")
+    public ResponseEntity<byte[]> downloadGradeTemplate(
+            @RequestParam(required = true) Integer classId,
+            @RequestParam(required = true) Integer moduleId) {
+        try {
+            byte[] data = gradeEntryService.generateGradeImportTemplate(classId, moduleId);
+            String filename = "grade_import_template.xlsx";
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+            
+            return ResponseEntity.ok().headers(headers).body(data);
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * GET /api/grade-entries/export
+     * Export danh sách điểm ra Excel (sau khi filter)
+     * Phân quyền: LECTURER được phân công vào lớp
+     * @param entryDate Bắt buộc khi đã chọn moduleId
+     */
+    @GetMapping("/export")
+    @PreAuthorize("@authz.hasRole(authentication, 'LECTURER') and @authz.hasAcademicAccessForClass(authentication, #classId)")
+    public ResponseEntity<byte[]> exportGrades(
+            @RequestParam(required = true) Integer classId,
+            @RequestParam(required = true) Integer semester,
+            @RequestParam(required = false) Integer moduleId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate entryDate) {
+        try {
+            byte[] data = gradeEntryService.exportGradesToExcel(classId, semester, moduleId, entryDate);
+            String filename = "grades_export.xlsx";
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+            
+            return ResponseEntity.ok().headers(headers).body(data);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // ===== Helper methods =====

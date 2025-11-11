@@ -15,6 +15,7 @@ import com.example.sis.repositories.EnrollmentRepository;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.repositories.projections.EnrollmentListView;
 import com.example.sis.services.EnrollmentService;
+import com.example.sis.services.StatusManagementService;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final ClassRepository classRepo;
     private final StudentRepository studentRepo;
     private final EntityManager em;
+    private final StatusManagementService statusManagementService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepo,
                                  ClassRepository classRepo,
                                  StudentRepository studentRepo,
-                                 EntityManager em) {
+                                 EntityManager em,
+                                 StatusManagementService statusManagementService) {
         this.enrollmentRepo = enrollmentRepo;
         this.classRepo = classRepo;
         this.studentRepo = studentRepo;
         this.em = em;
+        this.statusManagementService = statusManagementService;
     }
 
     // ========= LIST =========
@@ -124,6 +128,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BadRequestException("Enrollment does not belong to class " + classId);
         }
 
+        // Kiểm tra: Nếu học viên đã DROPPED thì không cho phép sửa enrollmentStatus
+        Student student = e.getStudent();
+        if (student.getOverallStatus() == com.example.sis.enums.OverallStatus.DROPPED) {
+            throw new BadRequestException("Không thể thay đổi trạng thái enrollment vì học viên đã nghỉ học (DROPPED)");
+        }
+
         EnrollmentStatus targetStatus = (req.getStatus() != null) ? req.getStatus() : e.getStatus();
 
         // (1) Không cho set leftAt khi status=ACTIVE
@@ -134,17 +144,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // (2) Đổi status
         if (req.getStatus() != null) {
             if (req.getStatus() == EnrollmentStatus.ACTIVE) {
-                // Về ACTIVE → clear leftAt + clear revoke info
+                // Về ACTIVE → clear leftAt (KHÔNG clear revoke info vì có thể là re-activate)
                 e.setLeftAt(null);
-                e.setRevokedBy(null);
-                e.setRevokedAt(null);
             } else if ((req.getStatus() == EnrollmentStatus.DROPPED || req.getStatus() == EnrollmentStatus.SUSPENDED)
                     && req.getLeftAt() == null) {
+                // Chỉ set leftAt, KHÔNG set revokedAt/revokedBy
+                // revokedAt chỉ được set khi thực sự XÓA enrollment (remove method)
                 e.setLeftAt(LocalDate.now());
-                if (currentUserId != null) {
-                    e.setRevokedBy(em.getReference(User.class, currentUserId));
-                }
-                e.setRevokedAt(java.time.LocalDateTime.now());
             }
             e.setStatus(req.getStatus());
         }
@@ -155,10 +161,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 throw new BadRequestException("leftAt must be >= enrolledAt");
             }
             e.setLeftAt(req.getLeftAt());
-            if (e.getStatus() != EnrollmentStatus.ACTIVE) {
-                if (currentUserId != null) e.setRevokedBy(em.getReference(User.class, currentUserId));
-                e.setRevokedAt(java.time.LocalDateTime.now());
-            }
+            // KHÔNG set revokedAt/revokedBy ở đây
+            // Chỉ set khi thực sự remove (soft delete)
         }
 
         // (4) Note (optional)
@@ -166,6 +170,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         e.setUpdatedAt(java.time.LocalDateTime.now());
         enrollmentRepo.save(e);
+        
+        // (5) Đồng bộ trạng thái Student từ enrollments
+        // Gọi StatusManagementService để tự động cập nhật student status
+        statusManagementService.syncStudentStatusFromEnrollments(e.getStudent().getStudentId());
+        
         return toResp(e);
     }
 
@@ -215,6 +224,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         r.setStudentId(v.getStudentId());
         r.setStudentName(v.getStudentName());
         r.setStudentEmail(v.getStudentEmail());
+        // Lấy student để có overallStatus
+        Student student = studentRepo.findById(v.getStudentId()).orElse(null);
+        if (student != null) {
+            r.setStudentOverallStatus(student.getOverallStatus().name());
+        }
         r.setStatus(v.getStatus().name());
         r.setEnrolledAt(v.getEnrolledAt());
         r.setLeftAt(v.getLeftAt());
@@ -229,6 +243,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         r.setStudentId(e.getStudent().getStudentId());
         r.setStudentName(e.getStudent().getFullName());
         r.setStudentEmail(e.getStudent().getEmail());
+        r.setStudentOverallStatus(e.getStudent().getOverallStatus().name());
         r.setStatus(e.getStatus().name());
         r.setEnrolledAt(e.getEnrolledAt());
         r.setLeftAt(e.getLeftAt());
