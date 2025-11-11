@@ -5,7 +5,9 @@ import com.example.sis.dtos.grade.GradeEntryDetailResponse;
 import com.example.sis.dtos.grade.GradeEntryResponse;
 import com.example.sis.dtos.grade.StudentGradesResponse;
 import com.example.sis.dtos.grade.UpdateGradeRecordsRequest;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -40,5 +42,26 @@ public interface GradeEntryService {
      * Cập nhật các grade_records trong grade_entry được xác định bởi classId, moduleId, entryDate
      */
     GradeEntryDetailResponse updateGradeRecords(UpdateGradeRecordsRequest request, Integer currentUserId);
+
+    /**
+     * Import điểm từ file Excel cho một đợt nhập điểm
+     */
+    GradeEntryDetailResponse importGradesFromExcel(
+            MultipartFile file, 
+            Integer classId, 
+            Integer moduleId, 
+            LocalDate entryDate, 
+            Integer currentUserId) throws IOException;
+
+    /**
+     * Tạo Excel template để nhập điểm
+     */
+    byte[] generateGradeImportTemplate(Integer classId, Integer moduleId) throws IOException;
+
+    /**
+     * Export danh sách điểm ra Excel (sau khi filter)
+     * @param entryDate Nếu có, chỉ export điểm của ngày này (bắt buộc khi đã chọn module)
+     */
+    byte[] exportGradesToExcel(Integer classId, Integer semester, Integer moduleId, LocalDate entryDate) throws IOException;
 }
 
