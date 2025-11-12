@@ -245,4 +245,3 @@ public class GradeEntryController {
         return null;
     }
 }
-
