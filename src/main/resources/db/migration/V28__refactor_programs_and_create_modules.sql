@@ -141,44 +141,8 @@ CREATE INDEX idx_modules_level         ON modules (level);
 CREATE INDEX idx_modules_sequence      ON modules (program_id, sequence_order);
 
 
--- =============================================================================
--- BƯỚC 4: SEED DỮ LIỆU MẪU (5 modules mẫu)
--- =============================================================================
--- Giả sử program_id=1 là "Bootcamp Java Web Fullstack"
 
-INSERT INTO modules (
-    program_id, code, name, description, 
-    sequence_order, semester, credits, duration_hours, 
-    level, is_mandatory, has_syllabus, notes
-) VALUES
 
--- Module 1: Nền tảng
-(1, 'MOD001', 'Nhập môn tư duy lập trình', 
- 'Tư duy logic, thuật toán, flowchart, pseudo-code, cách tiếp cận bài toán', 
- 1, 1, 2, 30, 'Beginner', TRUE, TRUE, 
- 'Module mở đầu - không cần kiến thức trước'),
 
--- Module 2: Git & HTML/CSS
-(1, 'MOD002', 'Git & HTML/CSS Cơ bản', 
- 'Version control với Git/GitHub, HTML5 semantic, CSS3, flexbox, grid, responsive design', 
- 2, 1, 3, 45, 'Beginner', TRUE, TRUE, 
- 'Học sau khi hiểu tư duy lập trình'),
 
--- Module 3: JavaScript
-(1, 'MOD003', 'JavaScript Core', 
- 'ES6+, data types, functions, objects, arrays, DOM manipulation, events, async/await', 
- 3, 1, 4, 60, 'Beginner', TRUE, TRUE, 
- 'Yêu cầu đã biết HTML/CSS'),
-
--- Module 4: Java Backend
-(1, 'MOD004', 'Java Core & OOP', 
- 'Java syntax, OOP (class, object, inheritance, polymorphism), Collections, Exception handling', 
- 4, 2, 5, 80, 'Intermediate', TRUE, TRUE, 
- 'Yêu cầu nền tảng JavaScript tốt'),
-
--- Module 5: Project
-(1, 'MOD005', 'Capstone Project', 
- 'Xây dựng ứng dụng Full Stack hoàn chỉnh: Frontend (React) + Backend (Spring Boot) + Database', 
- 5, 3, 6, 80, 'Advanced', TRUE, FALSE, 
- 'Tổng hợp tất cả kiến thức đã học');
 
