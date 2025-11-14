@@ -44,6 +44,12 @@ public class AttendanceSession {
     @Column(name = "attendance_date", nullable = false)
     private LocalDate attendanceDate;
 
+    @Column(name = "study_days", length = 50)
+    private String studyDays;
+
+    @Column(name = "study_time", length = 20)
+    private String studyTime;
+
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
@@ -137,6 +143,22 @@ public class AttendanceSession {
 
     public void setAttendanceDate(LocalDate attendanceDate) {
         this.attendanceDate = attendanceDate;
+    }
+
+    public String getStudyDays() {
+        return studyDays;
+    }
+
+    public void setStudyDays(String studyDays) {
+        this.studyDays = studyDays;
+    }
+
+    public String getStudyTime() {
+        return studyTime;
+    }
+
+    public void setStudyTime(String studyTime) {
+        this.studyTime = studyTime;
     }
 
     public String getNotes() {
