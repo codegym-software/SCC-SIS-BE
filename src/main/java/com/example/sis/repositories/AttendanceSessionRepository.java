@@ -57,5 +57,12 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
         AND s.deleted = false
         """)
     long countByTeacherAndDate(@Param("teacherId") Integer teacherId, @Param("date") LocalDate date);
+
+    /**
+     * Lấy danh sách buổi điểm danh của một lớp trong khoảng thời gian
+     * (Dùng để hiển thị lịch sử sessions kể cả khi studyDays thay đổi)
+     */
+    List<AttendanceSession> findByClassEntity_ClassIdAndAttendanceDateBetweenAndDeletedFalse(
+            Integer classId, LocalDate fromDate, LocalDate toDate);
 }
 
