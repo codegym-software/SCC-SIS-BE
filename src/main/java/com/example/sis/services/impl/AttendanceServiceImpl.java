@@ -16,7 +16,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -56,47 +58,88 @@ public class AttendanceServiceImpl implements AttendanceService {
         // 1. Lấy tất cả các lớp mà giảng viên này được gán (active assignments)
         List<ClassTeacher> assignments = classTeacherRepo.findActiveByTeacherId(teacherId);
         
-        List<TeacherScheduleResponse> result = new ArrayList<>();
+        // Map để lưu tất cả events: key = "classId-date", value = TeacherScheduleResponse
+        Map<String, TeacherScheduleResponse> eventMap = new HashMap<>();
         
-        // 2. Với mỗi lớp, tính toán tất cả các ngày học CỤ THỂ trong khoảng thời gian
+        // 2. Với mỗi lớp, xử lý sessions và lịch lý thuyết
         for (ClassTeacher assignment : assignments) {
             ClassEntity clazz = assignment.getClassEntity();
+            Integer classId = clazz.getClassId();
             
-            // Validate dữ liệu
-            if (clazz.getStartDate() == null || clazz.getEndDate() == null 
-                || clazz.getStudyDays() == null || clazz.getStudyDays().isEmpty()) {
-                continue;
-            }
-            
-            // Tính các ngày học cụ thể trong khoảng from-to
-            List<LocalDate> studyDates = calculateStudyDates(
-                clazz.getStartDate(),
-                clazz.getEndDate(),
-                clazz.getStudyDays(),
+            // 2.1. TRƯỚC TIÊN: Lấy TẤT CẢ các AttendanceSession đã tạo trong khoảng thời gian
+            List<AttendanceSession> existingSessions = sessionRepo.findByClassEntity_ClassIdAndAttendanceDateBetweenAndDeletedFalse(
+                classId,
                 from,
                 to
             );
             
-            // 3. Tạo response cho mỗi ngày học
-            for (LocalDate studyDate : studyDates) {
+            // Thêm tất cả sessions đã tạo vào eventMap (ưu tiên cao nhất)
+            for (AttendanceSession session : existingSessions) {
+                String key = classId + "-" + session.getAttendanceDate().toString();
                 TeacherScheduleResponse scheduleItem = new TeacherScheduleResponse();
-                scheduleItem.setClassId(clazz.getClassId());
+                scheduleItem.setClassId(classId);
                 scheduleItem.setClassName(clazz.getName());
-                scheduleItem.setAttendanceDate(studyDate);
+                scheduleItem.setAttendanceDate(session.getAttendanceDate());
+                scheduleItem.setSessionStatus("TAKEN"); // Đã điểm danh
                 
-                // Check xem đã có buổi điểm danh chưa
-                boolean hasSession = sessionRepo.existsByClassEntity_ClassIdAndAttendanceDateAndDeletedFalse(
-                    clazz.getClassId(), 
-                    studyDate
+                // Sử dụng studyTime từ session (lưu tại thời điểm điểm danh)
+                // thay vì từ class hiện tại để giữ nguyên khung giờ ban đầu
+                scheduleItem.setStudyTime(session.getStudyTime());
+                
+                eventMap.put(key, scheduleItem);
+            }
+            
+            // 2.2. SAU ĐÓ: Tính lịch lý thuyết từ studyDays (chỉ cho ngày CHƯA có session)
+            if (clazz.getStartDate() != null && clazz.getEndDate() != null 
+                && clazz.getStudyDays() != null && !clazz.getStudyDays().isEmpty()) {
+                
+                // Số buổi học quy định trong 1 tuần (theo studyDays của class)
+                int sessionsPerWeek = clazz.getStudyDays().size();
+                
+                // Tính các ngày học cụ thể trong khoảng from-to
+                List<LocalDate> studyDates = calculateStudyDates(
+                    clazz.getStartDate(),
+                    clazz.getEndDate(),
+                    clazz.getStudyDays(),
+                    from,
+                    to
                 );
                 
-                scheduleItem.setSessionStatus(hasSession ? "TAKEN" : "NOT_TAKEN");
-                
-                result.add(scheduleItem);
+                // Tạo response cho mỗi ngày học (chỉ nếu chưa có trong eventMap)
+                for (LocalDate studyDate : studyDates) {
+                    String key = classId + "-" + studyDate.toString();
+                    
+                    // Chỉ thêm nếu chưa có session cho ngày này
+                    if (!eventMap.containsKey(key)) {
+                        // Kiểm tra xem tuần này đã có đủ số buổi học chưa
+                        LocalDate weekStart = studyDate.with(java.time.DayOfWeek.MONDAY);
+                        LocalDate weekEnd = weekStart.plusDays(6);
+                        
+                        long takenSessionsInWeek = existingSessions.stream()
+                            .filter(s -> !s.getAttendanceDate().isBefore(weekStart) 
+                                      && !s.getAttendanceDate().isAfter(weekEnd))
+                            .count();
+                        
+                        // Chỉ thêm buổi mới nếu tuần chưa đủ số buổi học
+                        if (takenSessionsInWeek < sessionsPerWeek) {
+                            TeacherScheduleResponse scheduleItem = new TeacherScheduleResponse();
+                            scheduleItem.setClassId(classId);
+                            scheduleItem.setClassName(clazz.getName());
+                            scheduleItem.setAttendanceDate(studyDate);
+                            scheduleItem.setSessionStatus("NOT_TAKEN"); // Chưa điểm danh
+                            // Sử dụng studyTime hiện tại của class cho lịch chưa điểm danh
+                            if (clazz.getStudyTime() != null) {
+                                scheduleItem.setStudyTime(clazz.getStudyTime().name());
+                            }
+                            eventMap.put(key, scheduleItem);
+                        }
+                    }
+                }
             }
         }
         
-        // Sắp xếp theo ngày
+        // 3. Chuyển Map thành List và sắp xếp theo ngày
+        List<TeacherScheduleResponse> result = new ArrayList<>(eventMap.values());
         result.sort((a, b) -> a.getAttendanceDate().compareTo(b.getAttendanceDate()));
         
         return result;
@@ -185,6 +228,18 @@ public class AttendanceServiceImpl implements AttendanceService {
         session.setAttendanceDate(request.getAttendanceDate());
         session.setNotes(request.getNotes());
         session.setTotalStudents(request.getRecords().size());
+        
+        // Lưu studyDays và studyTime tại thời điểm điểm danh để giữ nguyên lịch học gốc
+        // (tránh bị thay đổi khi admin sửa lịch lớp sau này)
+        if (classEntity.getStudyDays() != null && !classEntity.getStudyDays().isEmpty()) {
+            session.setStudyDays(classEntity.getStudyDays().stream()
+                .map(Enum::name)
+                .collect(java.util.stream.Collectors.joining(",")));
+        }
+        if (classEntity.getStudyTime() != null) {
+            session.setStudyTime(classEntity.getStudyTime().name());
+        }
+        
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
 
