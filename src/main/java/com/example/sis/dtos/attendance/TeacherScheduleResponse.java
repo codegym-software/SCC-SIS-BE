@@ -11,6 +11,7 @@ public class TeacherScheduleResponse {
     private String className;
     private LocalDate attendanceDate;
     private String sessionStatus; // "NOT_TAKEN" or "TAKEN"
+    private String studyTime; // "MORNING", "AFTERNOON", or "EVENING"
 
     // Getters and Setters
     public Integer getClassId() {
@@ -43,6 +44,14 @@ public class TeacherScheduleResponse {
 
     public void setSessionStatus(String sessionStatus) {
         this.sessionStatus = sessionStatus;
+    }
+
+    public String getStudyTime() {
+        return studyTime;
+    }
+
+    public void setStudyTime(String studyTime) {
+        this.studyTime = studyTime;
     }
 }
 
