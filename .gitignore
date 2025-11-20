@@ -38,3 +38,10 @@ build/
 ### File Uploads (ignore uploaded files) ###
 uploads/
 uploads/syllabus/
+
+### Test Documentation ###
+TEST_DOCUMENTATION.md
+
+### JaCoCo Coverage Reports ###
+target/site/jacoco/
+target/jacoco.exec
