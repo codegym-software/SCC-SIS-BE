@@ -1,0 +1,6 @@
+{
+  "code": "TEST_MANAGER",
+  "name": "Test Manager Role",
+  "active": true,
+  "permissionIds": [1, 2, 3]
+}
