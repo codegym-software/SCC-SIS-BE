@@ -27,6 +27,7 @@ import com.example.sis.repositories.ModuleRepository;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.services.GradeEntryService;
 import com.example.sis.services.ModuleService;
+import com.example.sis.services.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ public class GradeEntryServiceImpl implements GradeEntryService {
     private final EnrollmentRepository enrollmentRepository;
     private final EntityManager entityManager;
     private final ModuleService moduleService;
+    private final NotificationService notificationService;
 
     public GradeEntryServiceImpl(
             GradeEntryRepository gradeEntryRepository,
@@ -66,7 +68,8 @@ public class GradeEntryServiceImpl implements GradeEntryService {
             StudentRepository studentRepository,
             EnrollmentRepository enrollmentRepository,
             EntityManager entityManager,
-            ModuleService moduleService) {
+            ModuleService moduleService,
+            NotificationService notificationService) {
         this.gradeEntryRepository = gradeEntryRepository;
         this.gradeRecordRepository = gradeRecordRepository;
         this.classRepository = classRepository;
@@ -75,6 +78,7 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         this.enrollmentRepository = enrollmentRepository;
         this.entityManager = entityManager;
         this.moduleService = moduleService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -173,6 +177,39 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         // 10. Fetch lại để lấy finalScore và passStatus từ generated columns
         gradeEntry = gradeEntryRepository.findById(gradeEntry.getGradeEntryId())
                 .orElseThrow(() -> new NotFoundException("Grade entry not found after creation"));
+
+        // 11. Gửi thông báo cho học viên về điểm mới
+        for (GradeRecord record : gradeRecords) {
+            GradeRecord refreshed = gradeRecordRepository.findById(record.getGradeRecordId()).orElse(record);
+            if (refreshed.getStudent().getUser() != null) {
+                Integer studentUserId = refreshed.getStudent().getUser().getUserId();
+                String scoreText = String.format("%.1f", refreshed.getFinalScore());
+                String statusText = refreshed.getPassStatus() == PassStatus.PASS ? "ĐẠT" : "CHƯA ĐẠT";
+                
+                notificationService.createAndSend(
+                    studentUserId,
+                    "GRADE_UPDATED",
+                    "Điểm số mới",
+                    String.format("Điểm %s đã được công bố: %s/10 (%s)", module.getName(), scoreText, statusText),
+                    "grade",
+                    refreshed.getGradeRecordId().longValue(),
+                    refreshed.getPassStatus() == PassStatus.PASS ? "low" : "medium"
+                );
+            }
+        }
+
+        // 12. Gửi thông báo cho admin/manager về hoạt động nhập điểm (không gửi cho chính giảng viên nhập điểm)
+        notificationService.notifyAdminsExcept(
+            classEntity.getCenter().getCenterId(),
+            currentUserId,
+            "LECTURER_GRADED",
+            "Giảng viên đã nhập điểm",
+            String.format("Giảng viên đã nhập điểm %s cho lớp %s (%d học viên)",
+                module.getName(), classEntity.getName(), gradeRecords.size()),
+            "CLASS",
+            classEntity.getClassId().longValue(),
+            "INFO"
+        );
 
         return toDetailResponse(gradeEntry);
     }
