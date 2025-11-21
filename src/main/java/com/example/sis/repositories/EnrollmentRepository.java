@@ -139,4 +139,13 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     // Method to get all enrollments (including revoked) for a student in a class
     List<Enrollment> findByStudent_StudentIdAndClassEntity_ClassId(
             Integer studentId, Integer classId);
+
+    // Method to get all active enrollments in a class (for statistics)
+    @Query("""
+        SELECT e FROM Enrollment e
+        WHERE e.classEntity.classId = :classId
+        AND e.revokedAt IS NULL
+        ORDER BY e.student.fullName
+        """)
+    List<Enrollment> findByClassEntity_ClassIdAndDeletedFalse(@org.springframework.data.repository.query.Param("classId") Integer classId);
 }

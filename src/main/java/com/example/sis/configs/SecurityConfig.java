@@ -156,6 +156,8 @@ public class SecurityConfig {
                                                 // Attendance
                                                 .requestMatchers(HttpMethod.GET, "/api/attendance-schedules").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance/statistics").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance/export/excel").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/attendance-sessions/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/attendance-sessions").authenticated()
                                                 .requestMatchers(HttpMethod.PUT, "/api/attendance-sessions/**").authenticated()
