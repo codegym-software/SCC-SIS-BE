@@ -20,10 +20,14 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final UserRoleRepository userRoleRepository;
+    private final com.example.sis.services.ClassAttendanceStatisticsService classAttendanceStatisticsService;
 
-    public AttendanceController(AttendanceService attendanceService, UserRoleRepository userRoleRepository) {
+    public AttendanceController(AttendanceService attendanceService, 
+                               UserRoleRepository userRoleRepository,
+                               com.example.sis.services.ClassAttendanceStatisticsService classAttendanceStatisticsService) {
         this.attendanceService = attendanceService;
         this.userRoleRepository = userRoleRepository;
+        this.classAttendanceStatisticsService = classAttendanceStatisticsService;
     }
 
     /**
@@ -219,6 +223,84 @@ public class AttendanceController {
             return userRoleRepository.userHasActiveRoleByKeycloakIdAndRoleCode(sub, "SUPER_ADMIN");
         }
         return false;
+    }
+
+    /**
+     * GET /api/classes/{classId}/attendance/statistics?month={month}&year={year}
+     * Lấy thống kê điểm danh của lớp học theo tháng/năm
+     * - Super Admin: có thể xem tất cả
+     * - Lecturer: có thể xem lớp mình dạy
+     * - Academic Staff: có thể xem tất cả
+     */
+    @GetMapping("/classes/{classId}/attendance/statistics")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or " +
+                  "@authz.hasRole(authentication, 'LECTURER') or " +
+                  "@authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<ClassAttendanceStatisticsDTO> getClassAttendanceStatistics(
+            @PathVariable Integer classId,
+            @RequestParam Integer month,
+            @RequestParam Integer year,
+            Authentication authentication) {
+        
+        try {
+            // Validate month and year
+            if (month < 1 || month > 12) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (year < 2000 || year > 2100) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            ClassAttendanceStatisticsDTO statistics = classAttendanceStatisticsService
+                    .getClassAttendanceStatistics(classId, month, year);
+            
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            System.err.println("Error fetching class attendance statistics: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * GET /api/classes/{classId}/attendance/export/excel?month={month}&year={year}
+     * Xuất thống kê điểm danh ra file Excel
+     * - Super Admin: có thể xuất tất cả
+     * - Lecturer: có thể xuất lớp mình dạy
+     * - Academic Staff: có thể xuất tất cả
+     */
+    @GetMapping("/classes/{classId}/attendance/export/excel")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or " +
+                  "@authz.hasRole(authentication, 'LECTURER') or " +
+                  "@authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<byte[]> exportAttendanceToExcel(
+            @PathVariable Integer classId,
+            @RequestParam Integer month,
+            @RequestParam Integer year,
+            Authentication authentication) {
+        
+        try {
+            // Validate month and year
+            if (month < 1 || month > 12) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (year < 2000 || year > 2100) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            byte[] excelFile = classAttendanceStatisticsService.exportToExcel(classId, month, year);
+            
+            String filename = String.format("attendance_statistics_class%d_%d_%d.xlsx", classId, month, year);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .body(excelFile);
+        } catch (Exception e) {
+            System.err.println("Error exporting attendance to Excel: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
 
