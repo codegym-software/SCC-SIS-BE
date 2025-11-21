@@ -13,6 +13,7 @@ import com.example.sis.repositories.CenterRepository;
 import com.example.sis.repositories.ClassRepository;
 import com.example.sis.repositories.ProgramRepository;
 import com.example.sis.repositories.UserRepository;
+import com.example.sis.services.NotificationService;
 import com.example.sis.services.StatusManagementService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,15 +35,18 @@ public class ClassService {
     private final CenterRepository centerRepository;
     private final UserRepository userRepository;
     private final StatusManagementService statusManagementService;
+    private final NotificationService notificationService;
 
     public ClassService(ClassRepository classRepository, ProgramRepository programRepository,
             CenterRepository centerRepository, UserRepository userRepository, 
-            StatusManagementService statusManagementService) {
+            StatusManagementService statusManagementService,
+            NotificationService notificationService) {
         this.classRepository = classRepository;
         this.programRepository = programRepository;
         this.centerRepository = centerRepository;
         this.userRepository = userRepository;
         this.statusManagementService = statusManagementService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -125,6 +129,21 @@ public class ClassService {
         if (savedClass.getCreatedBy() != null) {
             savedClass.getCreatedBy().getUserId(); // Trigger lazy load
         }
+
+        // Gửi thông báo cho admin/manager về lớp mới (bao gồm người tạo)
+        notificationService.notifyAdminsExcept(
+                savedClass.getCenter().getCenterId(),
+                createdBy,
+                "CLASS_CREATED",
+                "Lớp học mới được tạo",
+                String.format("Lớp %s (%s) đã được tạo tại %s",
+                        savedClass.getName(),
+                        savedClass.getProgram().getName(),
+                        savedClass.getCenter().getName()),
+                "CLASS",
+                savedClass.getClassId().longValue(),
+                "INFO"
+        );
 
         return convertToClassResponse(savedClass);
     }
@@ -218,6 +237,31 @@ public class ClassService {
         savedClass.getProgram().getName(); // Trigger lazy load
         if (savedClass.getUpdatedBy() != null) {
             savedClass.getUpdatedBy().getUserId(); // Trigger lazy load
+        }
+        
+        // Gửi thông báo khi có thay đổi quan trọng (lịch học, phòng, thời gian)
+        boolean hasImportantChanges = request.getStartDate() != null || 
+                                      request.getEndDate() != null ||
+                                      request.getStudyDays() != null ||
+                                      request.getStudyTime() != null ||
+                                      request.getRoom() != null;
+        
+        if (hasImportantChanges && savedClass.getClassTeachers() != null) {
+            // Thông báo cho giảng viên
+            savedClass.getClassTeachers().stream()
+                .filter(ct -> ct.getTeacher() != null)
+                .forEach(ct -> {
+                    notificationService.createAndSend(
+                        ct.getTeacher().getUserId(),
+                        "CLASS_UPDATED",
+                        "Cập nhật lớp học",
+                        String.format("Lớp %s đã có thay đổi thông tin - Vui lòng kiểm tra chi tiết",
+                            savedClass.getName()),
+                        "class",
+                        savedClass.getClassId().longValue(),
+                        "medium"
+                    );
+                });
         }
 
         return convertToClassResponse(savedClass);
