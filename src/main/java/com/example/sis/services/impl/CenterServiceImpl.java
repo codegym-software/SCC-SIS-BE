@@ -11,6 +11,7 @@ import com.example.sis.models.UserRole;
 import com.example.sis.repositories.CenterRepository;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.services.CenterService;
+import com.example.sis.services.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +25,14 @@ public class CenterServiceImpl implements CenterService {
 
     private final CenterRepository centerRepository;
     private final UserRoleRepository userRoleRepository;
+    private final NotificationService notificationService;
 
     public CenterServiceImpl(CenterRepository centerRepository,
-                             UserRoleRepository userRoleRepository) {
+                             UserRoleRepository userRoleRepository,
+                             NotificationService notificationService) {
         this.centerRepository = centerRepository;
         this.userRoleRepository = userRoleRepository;
+        this.notificationService = notificationService;
     }
 
     // ===== LITE (dropdown) =====
@@ -69,6 +73,19 @@ public class CenterServiceImpl implements CenterService {
         applyCreate(req, c);
         c.setCreatedBy(createdBy);
         Center saved = centerRepository.save(c);
+        
+        // Gửi thông báo cho SUPER_ADMIN về trung tâm mới (bao gồm cả người tạo)
+        notificationService.notifyAdminsExcept(
+                saved.getCenterId(),
+                null, // null = gửi cho tất cả, không loại trừ ai
+                "CENTER_CREATED",
+                "Trung tâm mới được tạo",
+                String.format("Trung tâm %s (%s) đã được tạo", saved.getName(), saved.getCode()),
+                "CENTER",
+                saved.getCenterId().longValue(),
+                "INFO"
+        );
+        
         return toResponse(saved);
     }
 
