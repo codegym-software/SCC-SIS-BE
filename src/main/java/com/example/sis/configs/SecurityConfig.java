@@ -171,6 +171,16 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PUT, "/api/grade-entries").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/grade-entries").authenticated()
 
+                                                // Notifications
+                                                .requestMatchers(HttpMethod.GET, "/api/notifications").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/notifications/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/notifications").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/notifications/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/notifications/**").authenticated()
+
+                                                // WebSocket endpoint
+                                                .requestMatchers("/ws/**").permitAll()
+
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 

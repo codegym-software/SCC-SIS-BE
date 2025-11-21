@@ -15,6 +15,7 @@ import com.example.sis.repositories.EnrollmentRepository;
 import com.example.sis.repositories.StudentRepository;
 import com.example.sis.repositories.projections.EnrollmentListView;
 import com.example.sis.services.EnrollmentService;
+import com.example.sis.services.NotificationService;
 import com.example.sis.services.StatusManagementService;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.*;
@@ -34,17 +35,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final StudentRepository studentRepo;
     private final EntityManager em;
     private final StatusManagementService statusManagementService;
+    private final NotificationService notificationService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepo,
                                  ClassRepository classRepo,
                                  StudentRepository studentRepo,
                                  EntityManager em,
-                                 StatusManagementService statusManagementService) {
+                                 StatusManagementService statusManagementService,
+                                 NotificationService notificationService) {
         this.enrollmentRepo = enrollmentRepo;
         this.classRepo = classRepo;
         this.studentRepo = studentRepo;
         this.em = em;
         this.statusManagementService = statusManagementService;
+        this.notificationService = notificationService;
     }
 
     // ========= LIST =========
@@ -112,6 +116,39 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         enrollmentRepo.save(e);
+        
+        // Gửi thông báo cho học viên
+        if (student.getUser() != null) {
+            notificationService.createAndSend(
+                student.getUser().getUserId(),
+                "ENROLLED_NEW_CLASS",
+                "Chào mừng bạn!",
+                String.format("Bạn đã được thêm vào lớp %s - Chương trình: %s",
+                    clazz.getName(), clazz.getProgram().getName()),
+                "class",
+                clazz.getClassId().longValue(),
+                "medium"
+            );
+        }
+        
+        // Gửi thông báo cho giảng viên
+        if (clazz.getClassTeachers() != null && !clazz.getClassTeachers().isEmpty()) {
+            clazz.getClassTeachers().stream()
+                .filter(ct -> ct.getTeacher() != null)
+                .forEach(ct -> {
+                    notificationService.createAndSend(
+                        ct.getTeacher().getUserId(),
+                        "STUDENT_ENROLLED",
+                        "Học viên mới",
+                        String.format("%s đã được thêm vào lớp %s",
+                            student.getFullName(), clazz.getName()),
+                        "class",
+                        clazz.getClassId().longValue(),
+                        "low"
+                    );
+                });
+        }
+        
         return toResp(e);
     }
 
@@ -188,6 +225,40 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         e.markRevoked(actor, reason);                // DROPPED + leftAt today + revokedBy/At + append note
         e.setUpdatedAt(java.time.LocalDateTime.now());
         enrollmentRepo.save(e);
+        
+        // Gửi thông báo cho học viên
+        Student student = e.getStudent();
+        ClassEntity clazz = e.getClassEntity();
+        if (student.getUser() != null) {
+            notificationService.createAndSend(
+                student.getUser().getUserId(),
+                "REMOVED_FROM_CLASS",
+                "Thay đổi lớp học",
+                String.format("Bạn đã bị xóa khỏi lớp %s. Vui lòng liên hệ trung tâm để biết thêm chi tiết.",
+                    clazz.getName()),
+                "class",
+                clazz.getClassId().longValue(),
+                "high"
+            );
+        }
+        
+        // Gửi thông báo cho giảng viên
+        if (clazz.getClassTeachers() != null && !clazz.getClassTeachers().isEmpty()) {
+            clazz.getClassTeachers().stream()
+                .filter(ct -> ct.getTeacher() != null)
+                .forEach(ct -> {
+                    notificationService.createAndSend(
+                        ct.getTeacher().getUserId(),
+                        "STUDENT_REMOVED",
+                        "Học viên rời lớp",
+                        String.format("%s đã bị xóa khỏi lớp %s",
+                            student.getFullName(), clazz.getName()),
+                        "class",
+                        clazz.getClassId().longValue(),
+                        "medium"
+                    );
+                });
+        }
     }
 
     // ========= Helpers =========
