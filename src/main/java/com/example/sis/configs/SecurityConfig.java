@@ -156,6 +156,8 @@ public class SecurityConfig {
                                                 // Attendance
                                                 .requestMatchers(HttpMethod.GET, "/api/attendance-schedules").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance-sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance/statistics").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/classes/*/attendance/export/excel").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/attendance-sessions/**").authenticated()
                                                 .requestMatchers(HttpMethod.POST, "/api/attendance-sessions").authenticated()
                                                 .requestMatchers(HttpMethod.PUT, "/api/attendance-sessions/**").authenticated()
@@ -168,6 +170,16 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/api/grade-entries/**").authenticated()
                                                 .requestMatchers(HttpMethod.PUT, "/api/grade-entries").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/grade-entries").authenticated()
+
+                                                // Notifications
+                                                .requestMatchers(HttpMethod.GET, "/api/notifications").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/notifications/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/notifications").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/notifications/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/notifications/**").authenticated()
+
+                                                // WebSocket endpoint
+                                                .requestMatchers("/ws/**").permitAll()
 
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak

@@ -85,5 +85,10 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
         @Param("studentId") Integer studentId,
         @Param("classId") Integer classId
     );
+
+    /**
+     * Lấy tất cả bản ghi điểm danh theo sessionId
+     */
+    List<AttendanceRecord> findBySession_SessionIdAndDeletedFalse(Integer sessionId);
 }
 

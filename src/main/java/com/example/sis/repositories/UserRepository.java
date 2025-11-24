@@ -77,6 +77,23 @@ public interface UserRepository extends JpaRepository<User, Integer> {
                                                       @Param("classId") Integer classId,
                                                       @Param("q") String searchQuery);
 
+    /**
+     * Tìm tất cả admin và manager của một center để gửi thông báo activity log
+     * (SUPER_ADMIN + CENTER_MANAGER + ACADEMIC_STAFF)
+     */
+    @Query("""
+    SELECT DISTINCT u
+    FROM User u
+    JOIN UserRole ur ON ur.user = u
+    JOIN Role r ON ur.role = r
+    WHERE u.deletedAt IS NULL
+      AND ur.revokedAt IS NULL
+      AND (
+        r.code = 'SUPER_ADMIN'
+        OR (r.code IN ('CENTER_MANAGER', 'ACADEMIC_STAFF') AND ur.center.centerId = :centerId)
+      )
+""")
+    List<User> findAdminsByCenterId(@Param("centerId") Integer centerId);
 
     // ALT (nếu text block """ bị lỗi, dùng chuỗi thường):
     // @Query("SELECT DISTINCT u FROM User u LEFT JOIN UserRole ur ON ur.user = u " +

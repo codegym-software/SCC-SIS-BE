@@ -8,6 +8,7 @@ import com.example.sis.exceptions.NotFoundException;
 import com.example.sis.models.*;
 import com.example.sis.repositories.*;
 import com.example.sis.services.AttendanceService;
+import com.example.sis.services.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final UserRepository userRepo;
     private final ClassTeacherRepository classTeacherRepo;
     private final EntityManager em;
+    private final NotificationService notificationService;
 
     public AttendanceServiceImpl(
             AttendanceSessionRepository sessionRepo,
@@ -41,7 +43,8 @@ public class AttendanceServiceImpl implements AttendanceService {
             EnrollmentRepository enrollmentRepo,
             UserRepository userRepo,
             ClassTeacherRepository classTeacherRepo,
-            EntityManager em) {
+            EntityManager em,
+            NotificationService notificationService) {
         this.sessionRepo = sessionRepo;
         this.recordRepo = recordRepo;
         this.classRepo = classRepo;
@@ -50,6 +53,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         this.userRepo = userRepo;
         this.classTeacherRepo = classTeacherRepo;
         this.em = em;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -292,6 +296,28 @@ public class AttendanceServiceImpl implements AttendanceService {
         session.setRecords(records);
         AttendanceSession savedSession = sessionRepo.save(session);
 
+        // Send notifications to students about attendance status
+        for (AttendanceRecord record : records) {
+            if (record.getStudent() != null && record.getStudent().getUser() != null) {
+                Integer studentUserId = record.getStudent().getUser().getUserId();
+                String status = record.getStatus().name();
+                String severity = status.equals("PRESENT") ? "low" : "medium";
+                String message = status.equals("PRESENT") 
+                    ? "Bạn đã có mặt trong buổi học ngày " + savedSession.getAttendanceDate()
+                    : "Bạn đã vắng mặt trong buổi học ngày " + savedSession.getAttendanceDate();
+                
+                notificationService.createAndSend(
+                    studentUserId,
+                    "ATTENDANCE_RECORDED",
+                    "Điểm danh lớp " + classEntity.getName(),
+                    message,
+                    "attendance_session",
+                    savedSession.getSessionId().longValue(),
+                    severity
+                );
+            }
+        }
+
         return toSessionResponse(savedSession);
     }
 
@@ -390,6 +416,36 @@ public class AttendanceServiceImpl implements AttendanceService {
         session.setUpdatedAt(LocalDateTime.now());
 
         AttendanceSession updatedSession = sessionRepo.save(session);
+        
+        // Send notifications to students whose attendance was updated
+        if (request.getRecords() != null && !request.getRecords().isEmpty()) {
+            for (UpdateAttendanceSessionRequest.UpdateAttendanceRecordRequest recordReq : request.getRecords()) {
+                AttendanceRecord record = updatedSession.getRecords().stream()
+                        .filter(r -> r.getRecordId().equals(recordReq.getRecordId()))
+                        .findFirst()
+                        .orElse(null);
+                
+                if (record != null && record.getStudent() != null && record.getStudent().getUser() != null) {
+                    Integer studentUserId = record.getStudent().getUser().getUserId();
+                    String status = record.getStatus().name();
+                    String severity = status.equals("PRESENT") ? "low" : "medium";
+                    String message = status.equals("PRESENT") 
+                        ? "Điểm danh của bạn đã được cập nhật: Có mặt - ngày " + updatedSession.getAttendanceDate()
+                        : "Điểm danh của bạn đã được cập nhật: Vắng mặt - ngày " + updatedSession.getAttendanceDate();
+                    
+                    notificationService.createAndSend(
+                        studentUserId,
+                        "ATTENDANCE_UPDATED",
+                        "Cập nhật điểm danh - " + updatedSession.getClassEntity().getName(),
+                        message,
+                        "attendance_session",
+                        updatedSession.getSessionId().longValue(),
+                        severity
+                    );
+                }
+            }
+        }
+        
         return toSessionResponse(updatedSession);
     }
 
