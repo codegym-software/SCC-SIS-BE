@@ -178,6 +178,29 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PATCH, "/api/notifications/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/notifications/**").authenticated()
 
+                                                // Lessons & Learning Progress (Bài học & Tiến trình học tập)
+                                                .requestMatchers(HttpMethod.GET, "/api/lessons/module/*/progress").authenticated() // Get module progress
+                                                .requestMatchers(HttpMethod.GET, "/api/lessons/module/*").authenticated() // Get lessons by module
+                                                .requestMatchers(HttpMethod.POST, "/api/lessons/*/progress").authenticated() // Update progress (STUDENT only)
+                                                .requestMatchers(HttpMethod.POST, "/api/lessons").authenticated() // Create lesson (ADMIN only)
+                                                .requestMatchers(HttpMethod.GET, "/api/lessons/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/lessons/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/lessons/**").authenticated()
+
+                                                // Quizzes (Bộ câu hỏi trắc nghiệm)
+                                                .requestMatchers(HttpMethod.POST, "/api/quizzes").authenticated() // Create quiz (ADMIN only)
+                                                .requestMatchers(HttpMethod.POST, "/api/quizzes/*/questions/import").authenticated() // Import questions (ADMIN only)
+                                                .requestMatchers(HttpMethod.GET, "/api/quizzes/lesson/*").authenticated() // Get quiz detail
+                                                .requestMatchers(HttpMethod.GET, "/api/quizzes/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/quizzes/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/quizzes/**").authenticated()
+
+                                                // Quiz Attempts (Làm bài quiz)
+                                                .requestMatchers(HttpMethod.POST, "/api/quizzes/attempts/start").authenticated() // Start attempt (STUDENT only)
+                                                .requestMatchers(HttpMethod.POST, "/api/quizzes/attempts/*/answers").authenticated() // Submit answer (STUDENT only)
+                                                .requestMatchers(HttpMethod.POST, "/api/quizzes/attempts/*/submit").authenticated() // Submit quiz (STUDENT only)
+                                                .requestMatchers(HttpMethod.GET, "/api/quizzes/attempts/quiz/*/my-attempts").authenticated() // Get attempt history (STUDENT only)
+
                                                 // WebSocket endpoint
                                                 .requestMatchers("/ws/**").permitAll()
 
