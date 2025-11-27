@@ -10,9 +10,6 @@ public class CreateQuizDTO {
     private Integer timeLimitMinutes;
     private Integer passingScore;
     private Integer maxAttempts;
-    private Boolean showCorrectAnswers;
-    private Boolean shuffleQuestions;
-    private Boolean shuffleOptions;
     
     public CreateQuizDTO() {}
 
@@ -62,29 +59,5 @@ public class CreateQuizDTO {
 
     public void setMaxAttempts(Integer maxAttempts) {
         this.maxAttempts = maxAttempts;
-    }
-
-    public Boolean getShowCorrectAnswers() {
-        return showCorrectAnswers;
-    }
-
-    public void setShowCorrectAnswers(Boolean showCorrectAnswers) {
-        this.showCorrectAnswers = showCorrectAnswers;
-    }
-
-    public Boolean getShuffleQuestions() {
-        return shuffleQuestions;
-    }
-
-    public void setShuffleQuestions(Boolean shuffleQuestions) {
-        this.shuffleQuestions = shuffleQuestions;
-    }
-
-    public Boolean getShuffleOptions() {
-        return shuffleOptions;
-    }
-
-    public void setShuffleOptions(Boolean shuffleOptions) {
-        this.shuffleOptions = shuffleOptions;
     }
 }

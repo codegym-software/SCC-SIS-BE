@@ -37,7 +37,57 @@ public class LessonService {
     private VimeoService vimeoService;
     
     /**
-     * API 1: Get lessons by module with student progress
+     * API 1: Get single lesson by ID with student progress
+     * @param studentId - null nếu user không phải student
+     */
+    public LessonResponseDTO getLessonById(Integer lessonId, Integer studentId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new RuntimeException("Lesson not found"));
+        
+        if (lesson.getDeleted()) {
+            throw new RuntimeException("Lesson has been deleted");
+        }
+        
+        LessonResponseDTO dto = new LessonResponseDTO();
+        
+        // Lesson information
+        dto.setLessonId(lesson.getLessonId());
+        dto.setModuleId(lesson.getModuleId());
+        dto.setLessonTitle(lesson.getLessonTitle());
+        dto.setLessonType(lesson.getLessonType());
+        dto.setLessonOrder(lesson.getLessonOrder());
+        dto.setContentUrl(lesson.getContentUrl());
+        dto.setContentType(lesson.getContentType());
+        dto.setDurationMinutes(lesson.getDurationMinutes());
+        dto.setDescription(lesson.getDescription());
+        dto.setIsMandatory(lesson.getIsMandatory());
+        dto.setPassingScore(lesson.getPassingScore());
+        
+        // Progress information (nếu là student)
+        if (studentId != null) {
+            LessonProgress progress = lessonProgressRepository.findByStudentIdAndLessonId(studentId, lessonId)
+                    .orElse(null);
+            
+            if (progress != null) {
+                dto.setStatus(progress.getStatus());
+                dto.setProgressPercentage(progress.getProgressPercentage());
+                dto.setTimeSpentSeconds(progress.getTimeSpentSeconds());
+                dto.setLastWatchedPosition(progress.getLastWatchedPosition());
+                dto.setCompletedAt(progress.getCompletedAt());
+                dto.setLastAccessedAt(progress.getLastAccessedAt());
+            } else {
+                dto.setStatus(ProgressStatus.NOT_STARTED);
+                dto.setProgressPercentage(0);
+                dto.setTimeSpentSeconds(0);
+                dto.setLastWatchedPosition(0);
+            }
+        }
+        
+        return dto;
+    }
+    
+    /**
+     * API 1.2: Get lessons by module with student progress
      * @param studentId - null nếu user không phải student (admin/manager chỉ xem lessons)
      */
     public List<LessonResponseDTO> getLessonsByModule(Integer moduleId, Integer studentId) {

@@ -70,4 +70,10 @@ public interface StudentRepository extends JpaRepository<Student, Integer> {
       ORDER BY e.enrolledAt DESC
       """)
   List<Object[]> findEnrollmentsByStudentId(@Param("studentId") Integer studentId);
+
+  /**
+   * Tìm student theo userId (không bao gồm đã xóa mềm)
+   */
+  @Query("SELECT s FROM Student s WHERE s.user.userId = :userId AND s.deletedAt IS NULL")
+  java.util.Optional<Student> findByUserIdAndDeletedAtIsNull(@Param("userId") Integer userId);
 }

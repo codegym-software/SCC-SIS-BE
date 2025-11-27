@@ -74,4 +74,18 @@ public interface StudentService {
      * Cập nhật trạng thái học viên
      */
     StudentResponse updateStudentStatus(Integer studentId, String status, Integer updatedByUserId);
+
+    /**
+     * Lấy danh sách tất cả cảnh báo học viên theo trung tâm
+     * @param centerId ID của trung tâm (optional, null = tất cả)
+     * @return Danh sách tất cả học viên có cảnh báo
+     */
+    List<java.util.Map<String, Object>> getAllStudentWarnings(Integer centerId);
+
+    /**
+     * Lấy danh sách cảnh báo của học viên hiện tại
+     * @param userId ID của user hiện tại
+     * @return Danh sách cảnh báo (vắng > 2, trượt > 2)
+     */
+    List<java.util.Map<String, Object>> getStudentWarnings(Integer userId);
 }

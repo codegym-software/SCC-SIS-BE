@@ -223,6 +223,26 @@ public class QuizController {
     }
     
     /**
+     * API 8: Xem chi tiết kết quả của một attempt cụ thể (Student only)
+     * GET /api/quizzes/attempts/{attemptId}/result
+     */
+    @GetMapping("/attempts/{attemptId}/result")
+    @PreAuthorize("@authz.hasRole(authentication, 'STUDENT')")
+    public ResponseEntity<?> getAttemptResult(
+            @PathVariable Integer attemptId,
+            Authentication authentication) {
+        try {
+            Integer studentId = getUserIdFromAuthentication(authentication);
+            QuizResultDTO result = attemptService.getAttemptResult(attemptId, studentId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error getting attempt result: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Helper method to get user ID from authentication
      */
     private Integer getUserIdFromAuthentication(Authentication authentication) {

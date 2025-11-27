@@ -222,6 +222,32 @@ public class ClassController {
     }
 
     /**
+     * Xóa lớp học (soft delete)
+     * Chỉ Super Admin hoặc Academic Staff tại trung tâm đó mới được xóa
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<?> deleteClass(
+            @PathVariable Integer id,
+            Authentication authentication) {
+
+        // Kiểm tra lớp học có tồn tại không
+        ClassResponse existingClass = classService.getClassById(id);
+
+        // Kiểm tra quyền truy cập - Academic Staff chỉ được xóa lớp trong center của mình
+        if (!isCurrentUserSuperAdmin(authentication)) {
+            Integer userCenterId = getCurrentUserCenterId(authentication);
+            if (userCenterId == null || !userCenterId.equals(existingClass.getCenterId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        Integer deletedBy = getCurrentUserId(authentication);
+        classService.deleteClass(id, deletedBy);
+        return ResponseEntity.ok("Xóa lớp học thành công");
+    }
+
+    /**
      * Lấy User ID hiện tại từ JWT token
      */
     private Integer getCurrentUserId(Authentication authentication) {

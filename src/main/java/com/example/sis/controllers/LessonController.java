@@ -58,6 +58,31 @@ public class LessonController {
     }
     
     /**
+     * API 1.5: Get single lesson by ID with progress
+     * GET /api/lessons/{lessonId}
+     * Quyền: Tất cả authenticated users
+     */
+    @GetMapping("/{lessonId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LessonResponseDTO> getLessonById(
+            @PathVariable Integer lessonId,
+            Authentication authentication) {
+        
+        Integer studentId = null;
+        try {
+            if (authentication != null && authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_STUDENT"))) {
+                studentId = getUserIdFromAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            // Admin/Manager không có studentId
+        }
+        
+        LessonResponseDTO lesson = lessonService.getLessonById(lessonId, studentId);
+        return ResponseEntity.ok(lesson);
+    }
+    
+    /**
      * API 2: Update video progress
      * POST /api/lessons/{lessonId}/progress
      * Quyền: STUDENT only (học viên tự cập nhật tiến trình học tập)
