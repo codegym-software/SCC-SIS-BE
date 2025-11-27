@@ -48,7 +48,7 @@ public class QuizService {
         quiz.setQuizTitle(dto.getQuizTitle());
         quiz.setQuizType(dto.getQuizType());
         quiz.setTimeLimitMinutes(dto.getTimeLimitMinutes());
-        quiz.setPassingScore(dto.getPassingScore());
+        quiz.setPassingScore(dto.getPassingScore() != null ? dto.getPassingScore() : 70);
         quiz.setMaxAttempts(dto.getMaxAttempts() != null ? dto.getMaxAttempts() : 3);
         quiz.setCreatedAt(LocalDateTime.now());
         quiz.setDeleted(false);

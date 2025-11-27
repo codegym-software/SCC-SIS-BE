@@ -315,6 +315,30 @@ public class AttendanceServiceImpl implements AttendanceService {
                     savedSession.getSessionId().longValue(),
                     severity
                 );
+                
+                // Check if student has been absent more than 2 times in this class
+                List<AttendanceRecord> allStudentAttendance = recordRepo
+                    .findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+                        record.getStudent().getStudentId(), 
+                        request.getClassId()
+                    );
+                
+                long totalAbsences = allStudentAttendance.stream()
+                    .filter(ar -> ar.getStatus() == AttendanceStatus.ABSENT)
+                    .count();
+                
+                if (totalAbsences > 2) {
+                    notificationService.createAndSend(
+                        studentUserId,
+                        "ATTENDANCE_WARNING",
+                        "Cảnh báo điểm danh",
+                        String.format("Bạn đã vắng %d buổi học trong lớp %s. Vui lòng liên hệ giảng viên để được hỗ trợ.", 
+                            totalAbsences, classEntity.getName()),
+                        "class",
+                        classEntity.getClassId().longValue(),
+                        "high"
+                    );
+                }
             }
         }
 
@@ -442,6 +466,30 @@ public class AttendanceServiceImpl implements AttendanceService {
                         updatedSession.getSessionId().longValue(),
                         severity
                     );
+                    
+                    // Check if student has been absent more than 2 times in this class
+                    List<AttendanceRecord> allStudentAttendance = recordRepo
+                        .findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+                            record.getStudent().getStudentId(), 
+                            updatedSession.getClassEntity().getClassId()
+                        );
+                    
+                    long absentCount = allStudentAttendance.stream()
+                        .filter(ar -> ar.getStatus() == AttendanceStatus.ABSENT)
+                        .count();
+                    
+                    if (absentCount > 2) {
+                        notificationService.createAndSend(
+                            studentUserId,
+                            "ATTENDANCE_WARNING",
+                            "Cảnh báo điểm danh",
+                            String.format("Bạn đã vắng %d buổi học trong lớp %s. Vui lòng liên hệ giảng viên để được hỗ trợ.", 
+                                absentCount, updatedSession.getClassEntity().getName()),
+                            "class",
+                            updatedSession.getClassEntity().getClassId().longValue(),
+                            "high"
+                        );
+                    }
                 }
             }
         }

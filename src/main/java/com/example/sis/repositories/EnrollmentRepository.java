@@ -132,6 +132,10 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     
     List<Enrollment> findByStudent_StudentIdAndRevokedAtIsNull(Integer studentId);
     
+    // Method to get active enrollments by student and status
+    List<Enrollment> findByStudent_StudentIdAndStatusAndRevokedAtIsNull(
+            Integer studentId, EnrollmentStatus status);
+    
     // Method for attendance history - chỉ lấy enrollment chưa bị revoke (active)
     Optional<Enrollment> findFirstByStudent_StudentIdAndClassEntity_ClassIdAndRevokedAtIsNullOrderByEnrolledAtDesc(
             Integer studentId, Integer classId);

@@ -470,6 +470,54 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         gradeEntry = gradeEntryRepository.findById(gradeEntry.getGradeEntryId())
                 .orElseThrow(() -> new NotFoundException("Grade entry not found after update"));
 
+        // 14. Send notifications to students about their grade updates
+        for (GradeRecord record : updatedRecords) {
+            if (record.getStudent() != null && record.getStudent().getUser() != null) {
+                Integer studentUserId = record.getStudent().getUser().getUserId();
+                String passStatusText = record.getPassStatus() == PassStatus.PASS ? "Đạt" : "Trượt";
+                
+                String message = String.format(
+                    "Điểm của bạn: Lý thuyết %.1f, Thực hành %.1f, Tổng kết %.1f - %s",
+                    record.getTheoryScore(),
+                    record.getPracticeScore(),
+                    record.getFinalScore(),
+                    passStatusText
+                );
+                
+                // Always use 'medium' severity for grade updates (show in Activity tab only)
+                notificationService.createAndSend(
+                    studentUserId,
+                    "GRADE_UPDATED",
+                    "Cập nhật điểm - " + module.getName(),
+                    message,
+                    "grade_entry",
+                    gradeEntry.getGradeEntryId().longValue(),
+                    "medium"
+                );
+                
+                // Check if student has failed more than 2 tests in this class
+                List<GradeRecord> allStudentGrades = gradeRecordRepository
+                    .findByStudentIdAndClassId(record.getStudent().getStudentId(), request.getClassId());
+                
+                long failCount = allStudentGrades.stream()
+                    .filter(gr -> gr.getPassStatus() == PassStatus.FAIL)
+                    .count();
+                
+                if (failCount > 2) {
+                    notificationService.createAndSend(
+                        studentUserId,
+                        "GRADE_WARNING",
+                        "Cảnh báo học tập",
+                        String.format("Bạn đã trượt %d bài thi trong lớp %s. Vui lòng liên hệ giảng viên để được hỗ trợ.", 
+                            failCount, classEntity.getName()),
+                        "class",
+                        classEntity.getClassId().longValue(),
+                        "high"
+                    );
+                }
+            }
+        }
+
         return toDetailResponse(gradeEntry);
     }
 

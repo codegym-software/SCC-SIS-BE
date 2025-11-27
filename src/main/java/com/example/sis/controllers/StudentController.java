@@ -272,6 +272,41 @@ public class StudentController {
     }
 
     /**
+     * Lấy danh sách tất cả cảnh báo học viên theo trung tâm
+     * - Super Admin: xem tất cả
+     * - Academic Staff: xem tất cả
+     * - Teacher: xem tất cả
+     */
+    @GetMapping("/warnings")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF') or @authz.hasRole(authentication, 'TEACHER')")
+    public ResponseEntity<java.util.Map<String, Object>> getAllStudentWarnings(
+            @RequestParam(required = false) Integer centerId
+    ) {
+        List<java.util.Map<String, Object>> allWarnings = studentService.getAllStudentWarnings(centerId);
+        
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("warnings", allWarnings);
+        response.put("totalCount", allWarnings.size());
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Lấy thống kê cảnh báo của học viên hiện tại
+     * - Student: xem cảnh báo của chính mình
+     */
+    @GetMapping("/my-warnings")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getMyWarnings(Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        List<java.util.Map<String, Object>> warnings = studentService.getStudentWarnings(currentUserId);
+        return ResponseEntity.ok(warnings);
+    }
+
+    /**
      * Helper methods
      */
     private Integer getCurrentUserId(Authentication authentication) {

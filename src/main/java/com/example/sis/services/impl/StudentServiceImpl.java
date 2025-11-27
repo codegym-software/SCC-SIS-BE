@@ -62,6 +62,8 @@ public class StudentServiceImpl implements StudentService {
     private final KeycloakAdminClient kcAdmin;
     private final RoleRepository roleRepo;
     private final UserRoleRepository userRoleRepo;
+    private final com.example.sis.repositories.AttendanceRecordRepository attendanceRecordRepo;
+    private final com.example.sis.repositories.GradeRecordRepository gradeRecordRepo;
 
     @Value("${keycloak.admin.default-temp-password:Team5@12345}")
     private String defaultTempPassword;
@@ -71,13 +73,17 @@ public class StudentServiceImpl implements StudentService {
                              EnrollmentRepository enrollmentRepo,
                              KeycloakAdminClient kcAdmin,
                              RoleRepository roleRepo,
-                             UserRoleRepository userRoleRepo) {
+                             UserRoleRepository userRoleRepo,
+                             com.example.sis.repositories.AttendanceRecordRepository attendanceRecordRepo,
+                             com.example.sis.repositories.GradeRecordRepository gradeRecordRepo) {
         this.studentRepo = studentRepo;
         this.userRepo = userRepo;
         this.enrollmentRepo = enrollmentRepo;
         this.kcAdmin = kcAdmin;
         this.roleRepo = roleRepo;
         this.userRoleRepo = userRoleRepo;
+        this.attendanceRecordRepo = attendanceRecordRepo;
+        this.gradeRecordRepo = gradeRecordRepo;
     }
 
     @Override
@@ -779,5 +785,149 @@ public class StudentServiceImpl implements StudentService {
             (LocalDate) enrollmentData[6], // leftAt
             (String) enrollmentData[7]   // enrollmentNote
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> getAllStudentWarnings(Integer centerId) {
+        List<java.util.Map<String, Object>> allWarnings = new ArrayList<>();
+        
+        // Get all active students
+        List<Student> students = studentRepo.findAllActiveStudents();
+        
+        for (Student student : students) {
+            // Get all active enrollments for this student
+            List<Enrollment> activeEnrollments = enrollmentRepo
+                .findByStudent_StudentIdAndStatusAndRevokedAtIsNull(
+                    student.getStudentId(), 
+                    EnrollmentStatus.ACTIVE
+                );
+
+            for (Enrollment enrollment : activeEnrollments) {
+                Integer classId = enrollment.getClassEntity().getClassId();
+                Integer classCenterId = enrollment.getClassEntity().getCenter() != null 
+                    ? enrollment.getClassEntity().getCenter().getCenterId() : null;
+                
+                // Filter by centerId if provided
+                if (centerId != null && !centerId.equals(classCenterId)) {
+                    continue;
+                }
+
+                String className = enrollment.getClassEntity().getName();
+                String programName = enrollment.getClassEntity().getProgram() != null 
+                    ? enrollment.getClassEntity().getProgram().getName() : "";
+
+                // Count absences for this class
+                List<com.example.sis.models.AttendanceRecord> attendanceRecords = 
+                    attendanceRecordRepo.findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+                        student.getStudentId(), classId);
+                
+                long absentCount = attendanceRecords.stream()
+                    .filter(ar -> ar.getStatus() == com.example.sis.enums.AttendanceStatus.ABSENT)
+                    .count();
+
+                // Count failed tests for this class
+                List<com.example.sis.models.GradeRecord> gradeRecords = 
+                    gradeRecordRepo.findByStudentIdAndClassId(student.getStudentId(), classId);
+                
+                long failCount = gradeRecords.stream()
+                    .filter(gr -> gr.getPassStatus() == com.example.sis.enums.PassStatus.FAIL)
+                    .count();
+
+                // Add warning if absences > 2 or failures > 2
+                if (absentCount > 2 || failCount > 2) {
+                    java.util.Map<String, Object> warning = new java.util.HashMap<>();
+                    warning.put("studentId", student.getStudentId());
+                    warning.put("code", student.getEmail()); // Use email as code identifier
+                    warning.put("name", student.getFullName());
+                    warning.put("classCode", enrollment.getClassEntity().getName()); // Use name as classCode
+                    warning.put("program", programName);
+                    warning.put("severity", absentCount > 2 && failCount > 2 ? "HIGH" : "MEDIUM");
+                    
+                    // Build detail string
+                    List<String> details = new ArrayList<>();
+                    if (absentCount > 2) {
+                        details.add("Vắng " + absentCount + " buổi");
+                    }
+                    if (failCount > 2) {
+                        details.add("Trượt " + failCount + " bài");
+                    }
+                    warning.put("detail", String.join(", ", details));
+                    
+                    // Build reason string
+                    if (absentCount > 2 && failCount > 2) {
+                        warning.put("reason", "Vắng mặt và học tập kém");
+                    } else if (absentCount > 2) {
+                        warning.put("reason", "Vắng mặt");
+                    } else {
+                        warning.put("reason", "Học tập kém");
+                    }
+                    
+                    allWarnings.add(warning);
+                }
+            }
+        }
+
+        return allWarnings;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> getStudentWarnings(Integer userId) {
+        // Find student by userId
+        Student student = studentRepo.findByUserIdAndDeletedAtIsNull(userId)
+            .orElse(null);
+        
+        if (student == null) {
+            return new ArrayList<>();
+        }
+
+        List<java.util.Map<String, Object>> warnings = new ArrayList<>();
+        
+        // Get all active enrollments for this student
+        List<Enrollment> activeEnrollments = enrollmentRepo
+            .findByStudent_StudentIdAndStatusAndRevokedAtIsNull(
+                student.getStudentId(), 
+                EnrollmentStatus.ACTIVE
+            );
+
+        for (Enrollment enrollment : activeEnrollments) {
+            Integer classId = enrollment.getClassEntity().getClassId();
+            String className = enrollment.getClassEntity().getName();
+            String programName = enrollment.getClassEntity().getProgram() != null 
+                ? enrollment.getClassEntity().getProgram().getName() : "";
+
+            // Count absences for this class
+            List<com.example.sis.models.AttendanceRecord> attendanceRecords = 
+                attendanceRecordRepo.findByStudentIdAndClassIdOrderByAttendanceDateDesc(
+                    student.getStudentId(), classId);
+            
+            long absentCount = attendanceRecords.stream()
+                .filter(ar -> ar.getStatus() == com.example.sis.enums.AttendanceStatus.ABSENT)
+                .count();
+
+            // Count failed tests for this class
+            List<com.example.sis.models.GradeRecord> gradeRecords = 
+                gradeRecordRepo.findByStudentIdAndClassId(student.getStudentId(), classId);
+            
+            long failCount = gradeRecords.stream()
+                .filter(gr -> gr.getPassStatus() == com.example.sis.enums.PassStatus.FAIL)
+                .count();
+
+            // Add warning if absences > 2 or failures > 2
+            if (absentCount > 2 || failCount > 2) {
+                java.util.Map<String, Object> warning = new java.util.HashMap<>();
+                warning.put("classId", classId);
+                warning.put("className", className);
+                warning.put("programName", programName);
+                warning.put("absentCount", absentCount);
+                warning.put("failCount", failCount);
+                warning.put("hasAbsenceWarning", absentCount > 2);
+                warning.put("hasFailWarning", failCount > 2);
+                warnings.add(warning);
+            }
+        }
+
+        return warnings;
     }
 }

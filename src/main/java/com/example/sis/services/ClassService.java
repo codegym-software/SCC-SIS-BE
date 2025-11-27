@@ -268,6 +268,30 @@ public class ClassService {
     }
 
     /**
+     * Xóa lớp học (soft delete)
+     */
+    @Transactional
+    public void deleteClass(Integer classId, Integer deletedBy) {
+        // Find existing class
+        ClassEntity existingClass = classRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+
+        // Check if already deleted
+        if (existingClass.getDeletedAt() != null) {
+            throw new RuntimeException("Lớp học đã bị xóa");
+        }
+
+        // Perform soft delete
+        existingClass.setDeletedAt(LocalDateTime.now());
+        existingClass.setUpdatedAt(LocalDateTime.now());
+        
+        User deleter = userRepository.findById(deletedBy).orElse(null);
+        existingClass.setUpdatedBy(deleter);
+
+        classRepository.save(existingClass);
+    }
+
+    /**
      * Lấy danh sách tất cả lớp học (cho Super Admin)
      */
     public List<ClassResponse> getAllClasses() {

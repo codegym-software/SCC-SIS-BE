@@ -17,7 +17,9 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class QuizAttemptService {
@@ -403,5 +405,88 @@ public class QuizAttemptService {
         history.setAttemptsRemaining(quiz.getMaxAttempts() - completedCount);
         
         return history;
+    }
+    
+    public QuizResultDTO getAttemptResult(Integer attemptId, Integer studentId) {
+        QuizAttempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new RuntimeException("Attempt not found"));
+        
+        // Verify ownership
+        if (!attempt.getStudentId().equals(studentId)) {
+            throw new RuntimeException("Unauthorized access to attempt");
+        }
+        
+        if (attempt.getStatus() != QuizAttemptStatus.COMPLETED) {
+            throw new RuntimeException("Attempt not completed yet");
+        }
+        
+        Quiz quiz = quizRepository.findByQuizIdAndDeletedFalse(attempt.getQuizId())
+                .orElseThrow(() -> new RuntimeException("Quiz not found"));
+        
+        // Get all answers for this attempt
+        List<QuizAnswer> answers = answerRepository.findByAttemptIdOrderByAnsweredAt(attemptId);
+        Map<Integer, QuizAnswer> answerMap = answers.stream()
+                .collect(Collectors.toMap(QuizAnswer::getQuestionId, a -> a));
+        
+        // Get all questions
+        List<QuizQuestion> questions = questionRepository.findByQuizIdOrderByQuestionOrder(attempt.getQuizId());
+        List<QuestionResultDTO> results = new ArrayList<>();
+        
+        for (QuizQuestion question : questions) {
+            QuestionResultDTO result = new QuestionResultDTO();
+            result.setQuestionId(question.getQuestionId());
+            result.setQuestionText(question.getQuestionText());
+            result.setPoints(question.getPoints());
+            
+            QuizAnswer answer = answerMap.get(question.getQuestionId());
+            if (answer != null) {
+                result.setSelectedOptionId(answer.getSelectedOptionId());
+                
+                // Get selected option text
+                QuizOption selectedOption = optionRepository.findById(answer.getSelectedOptionId())
+                        .orElse(null);
+                if (selectedOption != null) {
+                    result.setSelectedOptionText(selectedOption.getOptionText());
+                    result.setIsCorrect(selectedOption.getIsCorrect());
+                }
+            }
+            
+            // Get correct option text
+            List<QuizOption> options = optionRepository.findByQuestionIdOrderByOptionOrder(question.getQuestionId());
+            for (QuizOption opt : options) {
+                if (opt.getIsCorrect()) {
+                    result.setCorrectOptionText(opt.getOptionText());
+                    break;
+                }
+            }
+            
+            results.add(result);
+        }
+        
+        // Build result DTO
+        QuizResultDTO resultDTO = new QuizResultDTO();
+        resultDTO.setAttemptId(attemptId);
+        resultDTO.setScore(attempt.getScore());
+        resultDTO.setTotalPoints(attempt.getTotalPoints());
+        
+        int percentage = (int) ((attempt.getScore().doubleValue() * 100) / attempt.getTotalPoints());
+        resultDTO.setPercentage(percentage);
+        resultDTO.setStatus(attempt.getStatus().name());
+        resultDTO.setCompletedAt(attempt.getCompletedAt());
+        resultDTO.setTimeSpentSeconds(attempt.getTimeSpentSeconds());
+        
+        long correctCount = results.stream().filter(QuestionResultDTO::getIsCorrect).count();
+        resultDTO.setCorrectAnswers((int) correctCount);
+        resultDTO.setTotalQuestions(questions.size());
+        resultDTO.setIsPassed(percentage >= quiz.getPassingScore());
+        
+        int completedAttempts = attemptRepository.countByStudentIdAndQuizIdAndStatus(
+                studentId, quiz.getQuizId(), QuizAttemptStatus.COMPLETED);
+        resultDTO.setCanRetake(completedAttempts < quiz.getMaxAttempts());
+        resultDTO.setAttemptsRemaining(quiz.getMaxAttempts() - completedAttempts);
+        
+        resultDTO.setResults(results);
+        
+        return resultDTO;
     }
 }

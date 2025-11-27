@@ -26,5 +26,13 @@ public interface GradeRecordRepository extends JpaRepository<GradeRecord, Intege
 
     // Tìm tất cả grade records của một student
     List<GradeRecord> findByStudent_StudentId(Integer studentId);
+
+    // Tìm tất cả grade records của một student trong một class cụ thể
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT gr FROM GradeRecord gr
+        WHERE gr.student.studentId = :studentId
+        AND gr.gradeEntry.classEntity.classId = :classId
+        """)
+    List<GradeRecord> findByStudentIdAndClassId(Integer studentId, Integer classId);
 }
 
