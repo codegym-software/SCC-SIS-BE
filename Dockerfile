@@ -18,8 +18,8 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# Copy JAR from build stage
-COPY --from=build /app/target/*.jar app.jar
+# Copy JAR from build stage - specify exact file name
+COPY --from=build /app/target/sis-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose port
 EXPOSE 8080
