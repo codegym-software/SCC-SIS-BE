@@ -35,7 +35,7 @@ services:
 
   # Spring Boot Application (new - from Docker Hub)
   backend:
-    image: huy210205/scc-sis-be:latest
+    image: huy210205/scc-sis-be:huy2.3
     container_name: scc-sis-be
     depends_on:
       - mysql
@@ -44,15 +44,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      SERVER_PORT: 8080
+      SERVER_PORT: 7000
       TZ: "Asia/Ho_Chi_Minh"
     ports:
-      - "8080:8080"
+      - "7000:7000"
     networks:
       - scc-sis-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7000/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
