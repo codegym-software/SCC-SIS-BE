@@ -39,6 +39,9 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 // Cho phép preflight của mọi đường dẫn
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                
+                                                // Actuator health cho Docker healthcheck
+                                                .requestMatchers("/actuator/health").permitAll()
 
                                                 // Auth profile
                                                 .requestMatchers("/api/auth/profile").authenticated()
