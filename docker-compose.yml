@@ -1,33 +1,68 @@
 services:
+  # MySQL Database (existing)
   mysql:
     image: mysql:8.0
     container_name: sis-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      TZ: "Asia/Ho_Chi_Minh"          # 🕓 Cấu hình timezone cho MySQL
+      TZ: "Asia/Ho_Chi_Minh"
     ports:
       - "${DB_PORT}:3306"
     command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
       - mysql_data:/var/lib/mysql
-      - /etc/localtime:/etc/localtime:ro  # Đồng bộ thời gian hệ thống container
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - scc-sis-network
 
+  # phpMyAdmin (existing)
   phpmyadmin:
     image: phpmyadmin:5
     container_name: sis-phpmyadmin
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      TZ: "Asia/Ho_Chi_Minh"          # 🕓 Cấu hình timezone cho phpMyAdmin
+      TZ: "Asia/Ho_Chi_Minh"
     ports:
       - "${PHPMYADMIN_PORT}:80"
     depends_on:
       - mysql
     volumes:
-      - /etc/localtime:/etc/localtime:ro  # Đồng bộ thời gian hệ thống container
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - scc-sis-network
+
+  # Spring Boot Application (new - from Docker Hub)
+  backend:
+    image: huy210205/scc-sis-be:latest
+    container_name: scc-sis-be
+    depends_on:
+      - mysql
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SERVER_PORT: 8080
+      TZ: "Asia/Ho_Chi_Minh"
+    ports:
+      - "8080:8080"
+    networks:
+      - scc-sis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   mysql_data:
     name: ${VOLUME_NAME}
     external: true
+
+networks:
+  scc-sis-network:
+    driver: bridge

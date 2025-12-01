@@ -1,6 +1,6 @@
 package com.example.sis.controllers;
 
-import com.example.sis.services.PermissionService;
+import com.example.sis.services.ClassTeacherService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,20 +11,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PermissionController Unit Tests")
-class PermissionControllerTest {
+@DisplayName("ClassTeacherController Unit Tests")
+class ClassTeacherControllerTest {
 
     @Mock
-    private PermissionService permissionService;
+    private ClassTeacherService classTeacherService;
 
     @InjectMocks
-    private PermissionController permissionController;
+    private ClassTeacherController classTeacherController;
 
     @Test
     @DisplayName("Should verify controller exists")
     void shouldVerifyControllerExists() {
         // THEN
-        assertNotNull(permissionController);
+        assertNotNull(classTeacherController);
     }
 
     private void assertNotNull(Object obj) {
