@@ -65,6 +65,12 @@ public interface GradeEntryService {
     byte[] exportGradesToExcel(Integer classId, Integer semester, Integer moduleId, LocalDate entryDate) throws IOException;
 
     /**
+     * Lấy tất cả điểm thi của học viên hiện tại (dựa vào userId từ token)
+     * Trả về danh sách điểm theo từng module
+     */
+    List<com.example.sis.dtos.grade.GradeRecordResponse> getMyGrades(Integer currentUserId);
+
+    /**
      * Lấy tất cả điểm thi của một học viên cụ thể
      * Trả về danh sách điểm theo từng module
      */

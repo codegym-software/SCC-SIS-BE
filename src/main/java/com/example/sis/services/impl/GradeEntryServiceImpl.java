@@ -856,6 +856,16 @@ public class GradeEntryServiceImpl implements GradeEntryService {
     }
 
     @Override
+    public List<GradeRecordResponse> getMyGrades(Integer currentUserId) {
+        // Tìm Student từ userId
+        Student student = studentRepository.findByUserIdAndDeletedAtIsNull(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found for userId: " + currentUserId));
+        
+        // Lấy điểm của student này
+        return getStudentGradesByStudentId(student.getStudentId());
+    }
+
+    @Override
     public List<GradeRecordResponse> getStudentGradesByStudentId(Integer studentId) {
         // Tìm tất cả grade records của học viên
         List<GradeRecord> gradeRecords = gradeRecordRepository.findByStudent_StudentId(studentId);
