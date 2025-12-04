@@ -185,6 +185,31 @@ public class AttendanceController {
     }
 
     /**
+     * GET /api/attendance/my-attendance/{classId}
+     * Lấy lịch sử điểm danh của học viên hiện tại trong một lớp (dựa vào token)
+     * - STUDENT: chỉ xem điểm danh của chính mình
+     */
+    @GetMapping("/attendance/my-attendance/{classId}")
+    @PreAuthorize("@authz.hasRole(authentication, 'STUDENT')")
+    public ResponseEntity<StudentAttendanceHistoryResponse> getMyAttendanceByClass(
+            @PathVariable Integer classId,
+            Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        try {
+            StudentAttendanceHistoryResponse response = attendanceService.getMyAttendanceByClass(currentUserId, classId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            System.err.println("Error fetching my attendance: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
      * GET /api/students/{student_id}/classes/{class_id}/attendance
      * Lấy lịch sử điểm danh của học viên trong một lớp
      * - Super Admin: có thể xem
