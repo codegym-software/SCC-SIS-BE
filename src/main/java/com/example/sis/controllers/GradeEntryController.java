@@ -102,6 +102,24 @@ public class GradeEntryController {
     }
 
     /**
+     * GET /api/grade-entries/my-grades
+     * Lấy tất cả điểm thi của học viên hiện tại (dựa vào token)
+     * Trả về danh sách điểm theo từng module
+     * Phân quyền: STUDENT
+     */
+    @GetMapping("/my-grades")
+    @PreAuthorize("@authz.hasRole(authentication, 'STUDENT')")
+    public ResponseEntity<List<GradeRecordResponse>> getMyGrades(Authentication authentication) {
+        Integer currentUserId = getCurrentUserId(authentication);
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        List<GradeRecordResponse> grades = gradeEntryService.getMyGrades(currentUserId);
+        return ResponseEntity.ok(grades);
+    }
+
+    /**
      * GET /api/grade-entries/student/{studentId}
      * Lấy tất cả điểm thi của một học viên cụ thể
      * Trả về danh sách điểm theo từng module
