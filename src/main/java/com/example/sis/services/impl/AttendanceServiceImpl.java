@@ -546,6 +546,17 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
+    public StudentAttendanceHistoryResponse getMyAttendanceByClass(Integer currentUserId, Integer classId) {
+        // Tìm Student từ userId
+        Student student = studentRepo.findByUserIdAndDeletedAtIsNull(currentUserId)
+                .orElseThrow(() -> new NotFoundException("Student not found for userId: " + currentUserId));
+        
+        // Gọi method getStudentAttendanceHistory với studentId
+        return getStudentAttendanceHistory(student.getStudentId(), classId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public StudentAttendanceHistoryResponse getStudentAttendanceHistory(Integer studentId, Integer classId) {
         // Validate student exists
         Student student = studentRepo.findById(studentId)

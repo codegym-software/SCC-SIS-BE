@@ -72,6 +72,7 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
     /**
      * Lấy TẤT CẢ lịch sử điểm danh của một học viên trong một lớp cụ thể
      * (không phụ thuộc vào enrollment_id, lấy theo student_id + class_id)
+     * Bao gồm cả buổi điểm danh trong tương lai để học viên có thể xem
      */
     @Query("""
         SELECT ar FROM AttendanceRecord ar
