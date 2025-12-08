@@ -35,6 +35,8 @@ public class SecurityConfig {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                                .headers(headers -> headers
+                                                .httpStrictTransportSecurity(hsts -> hsts.disable()))
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Cho phép preflight của mọi đường dẫn

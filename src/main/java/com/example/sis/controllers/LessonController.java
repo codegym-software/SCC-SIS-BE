@@ -58,6 +58,32 @@ public class LessonController {
     }
     
     /**
+     * API NEW: Get all lessons by class (includes lessons from all semesters)
+     * GET /api/lessons/class/{classId}
+     * Quyền: Tất cả authenticated users
+     */
+    @GetMapping("/class/{classId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<LessonResponseDTO>> getLessonsByClass(
+            @PathVariable Integer classId,
+            Authentication authentication) {
+        
+        // Get student ID only if user is a student
+        Integer studentId = null;
+        try {
+            if (authentication != null && authentication.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_STUDENT"))) {
+                studentId = getUserIdFromAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            // Admin/Manager không có studentId, để null
+        }
+        
+        List<LessonResponseDTO> lessons = lessonService.getLessonsByClass(classId, studentId);
+        return ResponseEntity.ok(lessons);
+    }
+    
+    /**
      * API 1.5: Get single lesson by ID with progress
      * GET /api/lessons/{lessonId}
      * Quyền: Tất cả authenticated users
