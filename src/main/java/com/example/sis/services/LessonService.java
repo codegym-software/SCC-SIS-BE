@@ -181,7 +181,7 @@ public class LessonService {
         List<Module> modules = moduleRepository.findAll(); // Simplified - should filter by class's program
         
         for (Module module : modules) {
-            if (module.getDeleted() != null && module.getDeleted()) {
+            if (module.getDeletedAt() != null) {
                 continue;
             }
             
