@@ -99,9 +99,10 @@ public class LessonService {
         // Get all lessons for the module
         List<Lesson> lessons = lessonRepository.findByModuleIdAndDeletedFalseOrderByLessonOrder(moduleId);
         
-        // Get module to retrieve semester info
+        // Get module to retrieve semester info and module name
         Module module = moduleRepository.findById(moduleId).orElse(null);
         Integer moduleSemester = module != null ? module.getSemester() : null;
+        String moduleName = module != null ? module.getName() : null;
         
         // Get lesson IDs
         List<Integer> lessonIds = new ArrayList<>();
@@ -139,6 +140,7 @@ public class LessonService {
             dto.setIsMandatory(lesson.getIsMandatory());
             dto.setPassingScore(lesson.getPassingScore());
             dto.setModuleSemester(moduleSemester);
+            dto.setModuleName(moduleName);
             
             // Progress information
             LessonProgress progress = progressMap.get(lesson.getLessonId());
@@ -187,6 +189,7 @@ public class LessonService {
             
             List<Lesson> lessons = lessonRepository.findByModuleIdAndDeletedFalseOrderByLessonOrder(module.getModuleId());
             Integer moduleSemester = module.getSemester();
+            String moduleName = module.getName();
             
             for (Lesson lesson : lessons) {
                 LessonResponseDTO dto = new LessonResponseDTO();
@@ -204,6 +207,7 @@ public class LessonService {
                 dto.setIsMandatory(lesson.getIsMandatory());
                 dto.setPassingScore(lesson.getPassingScore());
                 dto.setModuleSemester(moduleSemester);
+                dto.setModuleName(moduleName);
                 
                 // Progress information (if student)
                 if (studentId != null) {

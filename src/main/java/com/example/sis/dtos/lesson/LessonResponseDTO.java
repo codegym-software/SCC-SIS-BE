@@ -20,6 +20,7 @@ public class LessonResponseDTO {
     private Boolean isMandatory;
     private Integer passingScore;
     private Integer moduleSemester; // Semester of the module this lesson belongs to
+    private String moduleName; // Name of the module this lesson belongs to
     
     // Progress information
     private ProgressStatus status;
@@ -125,6 +126,14 @@ public class LessonResponseDTO {
 
     public void setModuleSemester(Integer moduleSemester) {
         this.moduleSemester = moduleSemester;
+    }
+
+    public String getModuleName() {
+        return moduleName;
+    }
+
+    public void setModuleName(String moduleName) {
+        this.moduleName = moduleName;
     }
 
     public ProgressStatus getStatus() {
