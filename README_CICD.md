@@ -53,7 +53,7 @@ Job 2: Build & Push Docker
 7. Click **Generate**
 8. **COPY TOKEN** (chỉ hiện 1 lần!)
 
-```
+``` hi
 Token format: dckr_pat_xxxxxxxxxxxxxxxxxxxxx
 ```
 
