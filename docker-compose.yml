@@ -58,6 +58,22 @@ services:
       retries: 3
       start_period: 40s
 
+  # Frontend Application (React + Vite)
+  frontend:
+    image: huy210205/scc-sis-fe:huy2.5
+    container_name: scc-sis-fe
+    depends_on:
+      - backend
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+    ports:
+      - "5173:80"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - scc-sis-network
+    restart: unless-stopped
+
 volumes:
   mysql_data:
     name: ${VOLUME_NAME}
@@ -65,4 +81,5 @@ volumes:
 
 networks:
   scc-sis-network:
+    name: scc-sis-network
     driver: bridge
