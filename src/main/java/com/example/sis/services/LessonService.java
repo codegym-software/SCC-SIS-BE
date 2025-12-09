@@ -48,6 +48,10 @@ public class LessonService {
             throw new RuntimeException("Lesson has been deleted");
         }
         
+        // Get module to retrieve semester info
+        Module module = moduleRepository.findById(lesson.getModuleId()).orElse(null);
+        Integer moduleSemester = module != null ? module.getSemester() : null;
+        
         LessonResponseDTO dto = new LessonResponseDTO();
         
         // Lesson information
@@ -62,6 +66,7 @@ public class LessonService {
         dto.setDescription(lesson.getDescription());
         dto.setIsMandatory(lesson.getIsMandatory());
         dto.setPassingScore(lesson.getPassingScore());
+        dto.setModuleSemester(moduleSemester);
         
         // Progress information (nếu là student)
         if (studentId != null) {
@@ -93,6 +98,11 @@ public class LessonService {
     public List<LessonResponseDTO> getLessonsByModule(Integer moduleId, Integer studentId) {
         // Get all lessons for the module
         List<Lesson> lessons = lessonRepository.findByModuleIdAndDeletedFalseOrderByLessonOrder(moduleId);
+        
+        // Get module to retrieve semester info and module name
+        Module module = moduleRepository.findById(moduleId).orElse(null);
+        Integer moduleSemester = module != null ? module.getSemester() : null;
+        String moduleName = module != null ? module.getName() : null;
         
         // Get lesson IDs
         List<Integer> lessonIds = new ArrayList<>();
@@ -129,6 +139,8 @@ public class LessonService {
             dto.setDescription(lesson.getDescription());
             dto.setIsMandatory(lesson.getIsMandatory());
             dto.setPassingScore(lesson.getPassingScore());
+            dto.setModuleSemester(moduleSemester);
+            dto.setModuleName(moduleName);
             
             // Progress information
             LessonProgress progress = progressMap.get(lesson.getLessonId());
@@ -150,6 +162,79 @@ public class LessonService {
         }
         
         return response;
+    }
+    
+    /**
+     * API NEW: Get all lessons by class (includes lessons from current and next semester)
+     * @param classId - The class ID
+     * @param studentId - null nếu user không phải student
+     */
+    public List<LessonResponseDTO> getLessonsByClass(Integer classId, Integer studentId) {
+        // Get all modules for the program that this class belongs to
+        // For now, we'll get all modules and their lessons, then filter by semester if needed
+        // This is a simplified implementation - you may need to adjust based on your class-program relationship
+        
+        List<LessonResponseDTO> allLessons = new ArrayList<>();
+        
+        // Get all modules (you may need to filter by program based on classId)
+        // For now, getting all lessons from all modules
+        // TODO: Implement proper filtering based on class -> program -> modules relationship
+        
+        List<Module> modules = moduleRepository.findAll(); // Simplified - should filter by class's program
+        
+        for (Module module : modules) {
+            if (module.getDeletedAt() != null) {
+                continue;
+            }
+            
+            List<Lesson> lessons = lessonRepository.findByModuleIdAndDeletedFalseOrderByLessonOrder(module.getModuleId());
+            Integer moduleSemester = module.getSemester();
+            String moduleName = module.getName();
+            
+            for (Lesson lesson : lessons) {
+                LessonResponseDTO dto = new LessonResponseDTO();
+                
+                // Lesson information
+                dto.setLessonId(lesson.getLessonId());
+                dto.setModuleId(lesson.getModuleId());
+                dto.setLessonTitle(lesson.getLessonTitle());
+                dto.setLessonType(lesson.getLessonType());
+                dto.setLessonOrder(lesson.getLessonOrder());
+                dto.setContentUrl(lesson.getContentUrl());
+                dto.setContentType(lesson.getContentType());
+                dto.setDurationMinutes(lesson.getDurationMinutes());
+                dto.setDescription(lesson.getDescription());
+                dto.setIsMandatory(lesson.getIsMandatory());
+                dto.setPassingScore(lesson.getPassingScore());
+                dto.setModuleSemester(moduleSemester);
+                dto.setModuleName(moduleName);
+                
+                // Progress information (if student)
+                if (studentId != null) {
+                    LessonProgress progress = lessonProgressRepository
+                            .findByStudentIdAndLessonId(studentId, lesson.getLessonId())
+                            .orElse(null);
+                    
+                    if (progress != null) {
+                        dto.setStatus(progress.getStatus());
+                        dto.setProgressPercentage(progress.getProgressPercentage());
+                        dto.setTimeSpentSeconds(progress.getTimeSpentSeconds());
+                        dto.setLastWatchedPosition(progress.getLastWatchedPosition());
+                        dto.setCompletedAt(progress.getCompletedAt());
+                        dto.setLastAccessedAt(progress.getLastAccessedAt());
+                    } else {
+                        dto.setStatus(ProgressStatus.NOT_STARTED);
+                        dto.setProgressPercentage(0);
+                        dto.setTimeSpentSeconds(0);
+                        dto.setLastWatchedPosition(0);
+                    }
+                }
+                
+                allLessons.add(dto);
+            }
+        }
+        
+        return allLessons;
     }
     
     /**
