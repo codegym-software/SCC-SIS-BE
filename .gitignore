@@ -44,6 +44,9 @@ TEST_DOCUMENTATION.md
 README_TESTING.md
 README_CICD.md
 
+### Deployment Documentation ###
+DEPLOY_VPS_UBUNTU.md
+
 ### JaCoCo Coverage Reports ###
 target/site/jacoco/
 target/jacoco.exec
