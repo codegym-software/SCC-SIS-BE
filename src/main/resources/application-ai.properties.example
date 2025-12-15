@@ -1,0 +1,64 @@
+# ============================================
+# AI Assistant Configuration
+# ============================================
+
+# -----------------------------------------
+# OpenAI Configuration (OPTIONAL)
+# -----------------------------------------
+# Để enable OpenAI GPT-3.5-turbo integration:
+# 1. Uncomment các dòng dưới đây
+# 2. Thay 'your-openai-api-key-here' bằng API key thực
+# 3. Restart backend
+#
+# Note: Nếu không set, AI sẽ dùng rule-based responses (default)
+#       Rule-based đã đủ thông minh cho hầu hết use cases!
+
+# openai.api.key=sk-your-openai-api-key-here
+# openai.api.url=https://api.openai.com/v1/chat/completions
+
+# -----------------------------------------
+# How to get OpenAI API Key
+# -----------------------------------------
+# 1. Truy cập: https://platform.openai.com/api-keys
+# 2. Login hoặc tạo tài khoản
+# 3. Click "Create new secret key"
+# 4. Copy key và paste vào 'openai.api.key'
+# 5. Lưu ý: API key sẽ mất phí (pay-as-you-go)
+#    - GPT-3.5-turbo: ~$0.0015 per 1K tokens
+#    - Estimate: ~$0.01 per 10 conversations
+
+# -----------------------------------------
+# Fallback Behavior
+# -----------------------------------------
+# - Nếu OpenAI API fail → Tự động fallback về rule-based
+# - Nếu OpenAI API key invalid → Dùng rule-based
+# - Nếu OpenAI API timeout → Dùng rule-based
+# => Luôn đảm bảo AI assistant hoạt động!
+
+# -----------------------------------------
+# Testing without OpenAI
+# -----------------------------------------
+# AI assistant hoạt động HOÀN HẢO với rule-based responses
+# Không cần OpenAI API key để test!
+# Rule-based responses:
+# - Greetings: "Xin chào", "Hi", "Hello"
+# - Classes: "Lớp học", "Khóa học"
+# - Grades: "Điểm số", "Kết quả"
+# - Schedule: "Lịch học", "Thời khóa biểu"
+# - Attendance: "Điểm danh"
+# - Assignments: "Bài tập"
+# - Help: "Giúp đỡ", "Hỗ trợ"
+# - Thanks: "Cảm ơn"
+
+# -----------------------------------------
+# Production Recommendation
+# -----------------------------------------
+# 🔴 QUAN TRỌNG:
+# - Không commit API key vào Git!
+# - Dùng environment variables trong production
+# - Set API key qua Kubernetes secrets hoặc Azure Key Vault
+# - Monitor API usage để control costs
+#
+# Example production setup:
+# openai.api.key=${OPENAI_API_KEY:}
+# (Read from env var OPENAI_API_KEY, empty string nếu không set)

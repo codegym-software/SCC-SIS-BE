@@ -49,7 +49,7 @@ public class KeycloakAdminClient {
         form.add("client_id", clientId);
         form.add("client_secret", clientSecret);
 
-        ResponseEntity<Map> rsp = rest.postForEntity(tokenEndpoint(), new HttpEntity<>(form, h), Map.class);
+        ResponseEntity<Map<String, Object>> rsp = rest.postForEntity(tokenEndpoint(), new HttpEntity<>(form, h), (Class<Map<String, Object>>)(Class<?>)Map.class);
         if (!rsp.getStatusCode().is2xxSuccessful() || rsp.getBody() == null || !rsp.getBody().containsKey("access_token")) {
             throw new IllegalStateException("Không lấy được admin token từ Keycloak");
         }
@@ -82,10 +82,10 @@ public class KeycloakAdminClient {
     @SuppressWarnings("unchecked")
     public String findUserIdByEmail(String email) {
         String url = adminUsersEndpoint() + "?email=" + email + "&exact=true";
-        ResponseEntity<List> rsp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(authHeaders()), List.class);
+        ResponseEntity<List<Map<String, Object>>> rsp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(authHeaders()), (Class<List<Map<String, Object>>>)(Class<?>)List.class);
         if (!rsp.getStatusCode().is2xxSuccessful() || rsp.getBody() == null || rsp.getBody().isEmpty()) return null;
         if (rsp.getBody().size() > 1) return null; // nếu realm cho phép trùng email -> xử theo policy
-        Map<String, Object> user = (Map<String, Object>) rsp.getBody().get(0);
+        Map<String, Object> user = rsp.getBody().get(0);
         return (String) user.get("id");
     }
 
