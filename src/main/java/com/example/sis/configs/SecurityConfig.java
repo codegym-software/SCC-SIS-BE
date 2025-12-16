@@ -204,16 +204,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/api/quizzes/attempts/*/submit").authenticated() // Submit quiz (STUDENT only)
                                                 .requestMatchers(HttpMethod.GET, "/api/quizzes/attempts/quiz/*/my-attempts").authenticated() // Get attempt history (STUDENT only)
 
-                                                // WebSocket endpoint
-                                                .requestMatchers("/ws/**").permitAll()
+                                // WebSocket endpoint
+                                .requestMatchers("/ws/**").permitAll()
 
-                                                .anyRequest().authenticated())
-                                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))); // dùng JWT Bearer từ Keycloak
+                                .anyRequest().authenticated())
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
 
                 // Đăng ký filter sau BearerTokenAuthenticationFilter
-                http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
-
-                return http.build();
+                http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);                return http.build();
         }
 
         @Bean
