@@ -4,8 +4,8 @@ import com.app.sis.dto.AIChatMessageDto;
 import com.app.sis.dto.AIChatRequestDto;
 import com.app.sis.dto.AIChatResponseDto;
 import com.app.sis.service.AIChatService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,12 +13,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/ai-chat")
-@RequiredArgsConstructor
-@Slf4j
 @CrossOrigin(origins = "*")
 public class AIChatController {
     
+    private static final Logger log = LoggerFactory.getLogger(AIChatController.class);
     private final AIChatService aiChatService;
+
+    public AIChatController(AIChatService aiChatService) {
+        this.aiChatService = aiChatService;
+    }
     
     /**
      * Send a message to AI assistant

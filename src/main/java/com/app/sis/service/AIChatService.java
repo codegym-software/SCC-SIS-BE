@@ -3,12 +3,8 @@ package com.app.sis.service;
 import com.app.sis.dto.AIChatMessageDto;
 import com.app.sis.dto.AIChatRequestDto;
 import com.app.sis.dto.AIChatResponseDto;
-import com.example.sis.models.User;
-import com.example.sis.repositories.UserRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -20,12 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class AIChatService {
     
-    private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
+    private static final Logger log = LoggerFactory.getLogger(AIChatService.class);
+
+    public AIChatService() {
+    }
     
     @Value("${openai.api.key:}")
     private String openaiApiKey;
@@ -239,19 +235,22 @@ public class AIChatService {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
         
         // Call OpenAI API
-        ResponseEntity<Map> response = restTemplate.exchange(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
             openaiApiUrl,
             HttpMethod.POST,
             entity,
-            Map.class
+            (Class<Map<String, Object>>)(Class<?>)Map.class
         );
         
         // Parse response
         Map<String, Object> responseBody = response.getBody();
         if (responseBody != null && responseBody.containsKey("choices")) {
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
             if (!choices.isEmpty()) {
                 Map<String, Object> firstChoice = choices.get(0);
+                @SuppressWarnings("unchecked")
                 Map<String, String> messageObj = (Map<String, String>) firstChoice.get("message");
                 return messageObj.get("content");
             }
