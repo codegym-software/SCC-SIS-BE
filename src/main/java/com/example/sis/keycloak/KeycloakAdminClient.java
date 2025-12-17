@@ -49,6 +49,7 @@ public class KeycloakAdminClient {
         form.add("client_id", clientId);
         form.add("client_secret", clientSecret);
 
+        @SuppressWarnings("unchecked")
         ResponseEntity<Map<String, Object>> rsp = rest.postForEntity(tokenEndpoint(), new HttpEntity<>(form, h), (Class<Map<String, Object>>)(Class<?>)Map.class);
         if (!rsp.getStatusCode().is2xxSuccessful() || rsp.getBody() == null || !rsp.getBody().containsKey("access_token")) {
             throw new IllegalStateException("Không lấy được admin token từ Keycloak");

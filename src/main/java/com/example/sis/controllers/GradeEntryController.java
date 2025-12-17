@@ -7,7 +7,6 @@ import com.example.sis.dtos.grade.GradeRecordResponse;
 import com.example.sis.dtos.grade.StudentGradesResponse;
 import com.example.sis.dtos.grade.UpdateGradeRecordsRequest;
 import com.example.sis.repositories.UserRoleRepository;
-import com.example.sis.securities.AuthzService;
 import com.example.sis.services.GradeEntryService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -36,15 +35,12 @@ public class GradeEntryController {
 
     private final GradeEntryService gradeEntryService;
     private final UserRoleRepository userRoleRepository;
-    private final AuthzService authzService;
 
     public GradeEntryController(
             GradeEntryService gradeEntryService,
-            UserRoleRepository userRoleRepository,
-            AuthzService authzService) {
+            UserRoleRepository userRoleRepository) {
         this.gradeEntryService = gradeEntryService;
         this.userRoleRepository = userRoleRepository;
-        this.authzService = authzService;
     }
 
     /**

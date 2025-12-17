@@ -2,7 +2,6 @@ package com.example.sis.services.impl;
 
 import com.example.sis.configs.AuthProps;
 import com.example.sis.enums.RoleScope;
-import com.example.sis.exceptions.NotFoundException;
 import com.example.sis.models.Role;
 import com.example.sis.models.User;
 import com.example.sis.repositories.RoleRepository;

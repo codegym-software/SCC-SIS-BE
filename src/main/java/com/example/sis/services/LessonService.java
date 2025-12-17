@@ -9,8 +9,6 @@ import com.example.sis.models.Module;
 import com.example.sis.repositories.LessonProgressRepository;
 import com.example.sis.repositories.LessonRepository;
 import com.example.sis.repositories.ModuleRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

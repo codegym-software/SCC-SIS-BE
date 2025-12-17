@@ -1,6 +1,5 @@
 package com.example.sis.services.impl;
 
-import com.example.sis.enums.RoleScope; // <— đường dẫn đúng
 import com.example.sis.dtos.role.CreateRoleRequest;
 import com.example.sis.dtos.role.RoleResponse;
 import com.example.sis.dtos.role.RoleListResponse;
@@ -15,7 +14,6 @@ import com.example.sis.repositories.RolePermissionRepository;
 import com.example.sis.repositories.UserRoleRepository;
 import com.example.sis.securities.AuthzService;
 import com.example.sis.services.RoleService;
-import com.example.sis.utils.RoleScopeUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -391,16 +389,6 @@ public class RoleServiceImpl implements RoleService {
         return code;
     }
 
-    private RoleScope resolveScope(String code) {
-        if (code == null)
-            return RoleScope.CENTER;
-        if (RoleScopeUtil.isExclusiveGlobal(code))
-            return RoleScope.GLOBAL;
-        if (RoleScopeUtil.isCenterScoped(code))
-            return RoleScope.CENTER;
-        return RoleScope.CENTER;
-    }
-
     @Override
     @Transactional(readOnly = true)
     public RoleListResponse listRolesNew(Integer previewLimit) {
@@ -444,7 +432,6 @@ public class RoleServiceImpl implements RoleService {
 
         // Sort permission names by category and name for consistent preview
         for (Map.Entry<Integer, List<String>> entry : permissionNamesMap.entrySet()) {
-            Integer roleId = entry.getKey();
             List<String> names = entry.getValue();
             // Note: In real implementation, you'd sort by category first, then name
             // For now, just sort by name for simplicity

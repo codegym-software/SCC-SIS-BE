@@ -609,9 +609,9 @@ public class GradeEntryServiceImpl implements GradeEntryService {
         }
 
         // 1. Validate class và module
-        ClassEntity classEntity = classRepository.findById(classId)
+        classRepository.findById(classId)
                 .orElseThrow(() -> new NotFoundException("Class not found: " + classId));
-        Module module = moduleRepository.findById(moduleId)
+        moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new NotFoundException("Module not found: " + moduleId));
 
         // 2. Lấy danh sách học viên ACTIVE trong lớp
@@ -798,28 +798,6 @@ public class GradeEntryServiceImpl implements GradeEntryService {
 
             workbook.write(out);
             return out.toByteArray();
-        }
-    }
-
-    // Helper methods để đọc Excel
-    private String getStringCell(Cell cell) {
-        if (cell == null) return null;
-        CellType type = cell.getCellType();
-        switch (type) {
-            case STRING:
-                return cell.getStringCellValue().trim();
-            case NUMERIC:
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    return String.valueOf(cell.getLocalDateTimeCellValue().toLocalDate());
-                } else {
-                    double d = cell.getNumericCellValue();
-                    String s = String.valueOf((long) d);
-                    return s;
-                }
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            default:
-                return null;
         }
     }
 

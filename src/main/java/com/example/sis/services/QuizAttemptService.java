@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -368,7 +366,6 @@ public class QuizAttemptService {
         
         List<AttemptSummaryDTO> summaries = new ArrayList<>();
         BigDecimal bestScore = BigDecimal.ZERO;
-        int attemptNumber = 0;
         int completedCount = 0;
         
         for (QuizAttempt attempt : attempts) {

@@ -515,7 +515,9 @@ public class ModuleServiceImpl implements ModuleService {
         // Parse JSON array từ syllabusUrl thành List<ModuleResourceDto>
         List<ModuleResourceDto> resources = parseResources(module.getSyllabusUrl());
         response.setResources(resources);
-        response.setSyllabusUrl(module.getSyllabusUrl()); // Giữ để backward compatibility
+        @SuppressWarnings("deprecation")
+        String syllabusUrl = module.getSyllabusUrl();
+        response.setSyllabusUrl(syllabusUrl); // Giữ để backward compatibility
         
         response.setHasSyllabus(module.getHasSyllabus());
         response.setNotes(module.getNotes());
@@ -576,7 +578,7 @@ public class ModuleServiceImpl implements ModuleService {
     @Transactional
     public List<ModuleResponse> resequenceModules(Integer programId) {
         // Kiểm tra program tồn tại
-        Program program = programRepository.findById(programId)
+        programRepository.findById(programId)
                 .orElseThrow(() -> new NotFoundException("Program không tồn tại với ID: " + programId));
 
         // Lấy tất cả modules active trong program

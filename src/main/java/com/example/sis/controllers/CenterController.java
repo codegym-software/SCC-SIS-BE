@@ -96,7 +96,7 @@ public class CenterController {
     }
 
     private Integer getCurrentUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt) {
             // TODO: map từ keycloak sub -> userId nội bộ nếu cần
             return null;
         }

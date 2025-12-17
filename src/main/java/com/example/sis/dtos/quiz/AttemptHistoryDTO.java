@@ -1,7 +1,6 @@
 package com.example.sis.dtos.quiz;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class AttemptHistoryDTO {

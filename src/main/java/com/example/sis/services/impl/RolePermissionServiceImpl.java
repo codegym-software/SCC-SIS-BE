@@ -2,7 +2,6 @@ package com.example.sis.services.impl;
 
 import com.example.sis.dtos.permission.PermissionResponse;
 import com.example.sis.dtos.role.RoleResponse;
-import com.example.sis.enums.RoleScope;
 import com.example.sis.dtos.rolepermission.RolePermissionRequest;
 import com.example.sis.dtos.rolepermission.RolePermissionResponse;
 import com.example.sis.exceptions.NotFoundException;
@@ -13,7 +12,6 @@ import com.example.sis.repositories.PermissionRepository;
 import com.example.sis.repositories.RolePermissionRepository;
 import com.example.sis.repositories.RoleRepository;
 import com.example.sis.services.RolePermissionService;
-import com.example.sis.utils.RoleScopeUtil;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -177,13 +175,6 @@ public class RolePermissionServiceImpl implements RolePermissionService {
                 Set.of(), // permissionIds sẽ được load riêng nếu cần
                 Map.of() // summary sẽ được build riêng nếu cần
         );
-    }
-
-    private RoleScope resolveScope(String code) {
-        if (code == null) return RoleScope.CENTER;
-        if (RoleScopeUtil.isExclusiveGlobal(code)) return RoleScope.GLOBAL;
-        if (RoleScopeUtil.isCenterScoped(code))   return RoleScope.CENTER;
-        return RoleScope.CENTER;
     }
 
     private String normalize(String s) {

@@ -813,7 +813,6 @@ public class StudentServiceImpl implements StudentService {
                     continue;
                 }
 
-                String className = enrollment.getClassEntity().getName();
                 String programName = enrollment.getClassEntity().getProgram() != null 
                     ? enrollment.getClassEntity().getProgram().getName() : "";
 

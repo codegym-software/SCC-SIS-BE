@@ -132,7 +132,6 @@ public class WordImportService {
                 // Kiểm tra option
                 Matcher optionMatcher = optionPattern.matcher(line);
                 if (optionMatcher.matches()) {
-                    String optionLetter = optionMatcher.group(1);
                     String optionText = optionMatcher.group(2);
                     
                     OptionImportDTO option = new OptionImportDTO();

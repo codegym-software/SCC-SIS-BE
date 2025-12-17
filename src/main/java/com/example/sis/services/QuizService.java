@@ -67,7 +67,7 @@ public class QuizService {
         logger.info("📥 Importing questions for quiz ID: {}", quizId);
         
         // Kiểm tra quiz tồn tại
-        Quiz quiz = quizRepository.findByQuizIdAndDeletedFalse(quizId)
+        quizRepository.findByQuizIdAndDeletedFalse(quizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found with ID: " + quizId));
         
         // Parse file Word

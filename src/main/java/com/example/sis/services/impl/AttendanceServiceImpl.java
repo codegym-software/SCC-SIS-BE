@@ -534,15 +534,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         return response;
     }
 
-    private AttendanceSessionSummaryResponse toSummaryResponse(AttendanceSession session) {
-        AttendanceSessionSummaryResponse response = new AttendanceSessionSummaryResponse();
-        response.setSessionId(session.getSessionId());
-        response.setAttendanceDate(session.getAttendanceDate());
-        response.setTotalStudents(session.getTotalStudents());
-        response.setPresentCount(session.getPresentCount());
-        response.setAbsentCount(session.getAbsentCount());
-        return response;
-    }
 
     @Override
     @Transactional(readOnly = true)

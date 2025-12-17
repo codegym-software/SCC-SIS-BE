@@ -3,7 +3,6 @@ package com.example.sis.dtos.classes;
 import com.example.sis.enums.StudyDay;
 import com.example.sis.enums.StudyTime;
 import com.example.sis.models.ClassEntity;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
