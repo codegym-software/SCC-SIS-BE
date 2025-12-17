@@ -1,7 +1,5 @@
 package com.example.sis.services;
 
-import com.example.sis.enums.RoleScope;
-
 /**
  * Service for auto-assigning default roles to users
  */

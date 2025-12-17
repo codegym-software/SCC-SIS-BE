@@ -1,6 +1,5 @@
 package com.example.sis.dtos.role;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 

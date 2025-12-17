@@ -13,8 +13,6 @@ import com.example.sis.repositories.CenterRepository;
 import com.example.sis.repositories.ClassRepository;
 import com.example.sis.repositories.ProgramRepository;
 import com.example.sis.repositories.UserRepository;
-import com.example.sis.services.NotificationService;
-import com.example.sis.services.StatusManagementService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

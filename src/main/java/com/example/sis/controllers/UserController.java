@@ -5,15 +5,12 @@ import com.example.sis.dtos.user.UserResponse;
 import com.example.sis.dtos.user.UserProfileResponse;
 import com.example.sis.models.User;
 import com.example.sis.models.UserRole;
-import com.example.sis.models.Role;
-import com.example.sis.models.Center;
 import com.example.sis.services.UserLookupService;
 import com.example.sis.services.UserService;
 import com.example.sis.services.DefaultRoleSyncService;
 import com.example.sis.services.ProvisioningService;
 import com.example.sis.repositories.UserRepository;
 import com.example.sis.repositories.UserRoleRepository;
-import com.example.sis.enums.RoleScope;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -76,10 +73,6 @@ public class UserController {
         // 2. Nếu không tìm thấy user hiện có, thử tạo user mới từ JWT token
         Integer userId = (userIdLong != null) ? userIdLong.intValue()
                 : provisioningService.ensureUserExists(authentication);
-
-        if (userId == null) {
-            return ResponseEntity.status(401).build();
-        }
 
         // 3. Đảm bảo default role được gán (idempotent)
         defaultRoleSyncService.ensureDefaultRoleAssigned(Long.valueOf(userId));
