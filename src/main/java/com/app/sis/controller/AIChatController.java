@@ -1,5 +1,6 @@
 package com.app.sis.controller;
 
+import com.app.sis.dto.AIChatAnalyticsDto;
 import com.app.sis.dto.AIChatMessageDto;
 import com.app.sis.dto.AIChatRequestDto;
 import com.app.sis.dto.AIChatResponseDto;
@@ -7,6 +8,7 @@ import com.app.sis.service.AIChatService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -61,5 +63,23 @@ public class AIChatController {
         log.info("Clearing chat history for user {}", userId);
         aiChatService.clearChatHistory(userId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Get analytics data for admin dashboard
+     * Only accessible by SUPER_ADMIN, ACADEMIC_STAFF
+     */
+    @GetMapping("/analytics")
+    @PreAuthorize("@authz.isSuperAdmin(authentication) or @authz.hasRole(authentication, 'ACADEMIC_STAFF')")
+    public ResponseEntity<AIChatAnalyticsDto> getAnalytics(
+            @RequestParam(defaultValue = "7") int days) {
+        log.info("Fetching AI chat analytics for last {} days", days);
+        try {
+            AIChatAnalyticsDto analytics = aiChatService.getAnalytics(days);
+            return ResponseEntity.ok(analytics);
+        } catch (Exception e) {
+            log.error("Error fetching analytics", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

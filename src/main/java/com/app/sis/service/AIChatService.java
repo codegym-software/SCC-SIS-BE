@@ -1,5 +1,6 @@
 package com.app.sis.service;
 
+import com.app.sis.dto.AIChatAnalyticsDto;
 import com.app.sis.dto.AIChatMessageDto;
 import com.app.sis.dto.AIChatRequestDto;
 import com.app.sis.dto.AIChatResponseDto;
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class AIChatService {
@@ -272,5 +275,102 @@ public class AIChatService {
         while (history.size() > MAX_HISTORY_SIZE) {
             history.removeFirst();
         }
+    }
+
+    /**
+     * Get analytics data for admin dashboard
+     * @param days Number of days to analyze (default 7)
+     * @return Analytics DTO with statistics
+     */
+    public AIChatAnalyticsDto getAnalytics(int days) {
+        LocalDateTime startDate = LocalDateTime.now().minusDays(days);
+        
+        // Calculate total questions (user messages) in period
+        int totalQuestions = 0;
+        Set<Long> uniqueUsers = new HashSet<>();
+        Map<String, Integer> dailyCounts = new HashMap<>();
+        Map<String, Integer> questionCounts = new HashMap<>();
+        List<String> unansweredQuestions = new ArrayList<>();
+        
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        
+        for (Map.Entry<Long, LinkedList<AIChatMessageDto>> entry : chatHistory.entrySet()) {
+            Long userId = entry.getKey();
+            LinkedList<AIChatMessageDto> messages = entry.getValue();
+            
+            for (AIChatMessageDto message : messages) {
+                if (message.getTimestamp().isAfter(startDate)) {
+                    if ("user".equals(message.getRole())) {
+                        totalQuestions++;
+                        uniqueUsers.add(userId);
+                        
+                        // Daily count
+                        String dateKey = message.getTimestamp().format(dateFormatter);
+                        dailyCounts.put(dateKey, dailyCounts.getOrDefault(dateKey, 0) + 1);
+                        
+                        // Question count
+                        String question = message.getContent();
+                        if (question.length() > 50) {
+                            question = question.substring(0, 50) + "...";
+                        }
+                        questionCounts.put(question, questionCounts.getOrDefault(question, 0) + 1);
+                        
+                        // Check if answered (next message is assistant)
+                        int index = messages.indexOf(message);
+                        if (index + 1 >= messages.size() || 
+                            !"assistant".equals(messages.get(index + 1).getRole())) {
+                            unansweredQuestions.add(question);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Generate daily chart data for last 7 days
+        List<AIChatAnalyticsDto.DailyChartData> dailyChats = new ArrayList<>();
+        for (int i = days - 1; i >= 0; i--) {
+            String date = LocalDateTime.now().minusDays(i).format(dateFormatter);
+            int count = dailyCounts.getOrDefault(date, 0);
+            dailyChats.add(new AIChatAnalyticsDto.DailyChartData(date, count));
+        }
+        
+        // Get top 10 questions sorted by count
+        List<AIChatAnalyticsDto.TopQuestion> topQuestions = questionCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(10)
+                .map(e -> new AIChatAnalyticsDto.TopQuestion(
+                        e.getKey(), 
+                        e.getValue(),
+                        Math.random() * 0.15 + 0.85 // Mock satisfaction rate 85-100%
+                ))
+                .collect(Collectors.toList());
+        
+        // Get unanswered questions (limit to 10)
+        Map<String, Integer> unansweredCounts = new HashMap<>();
+        for (String q : unansweredQuestions) {
+            unansweredCounts.put(q, unansweredCounts.getOrDefault(q, 0) + 1);
+        }
+        
+        List<AIChatAnalyticsDto.UnansweredQuestion> unansweredList = unansweredCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(10)
+                .map(e -> new AIChatAnalyticsDto.UnansweredQuestion(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+        
+        // Calculate metrics
+        double avgResponseTime = 1.8; // Mock average response time in seconds
+        double totalCost = totalQuestions * 0.0027; // Mock cost $0.0027 per question
+        int percentChange = (int)(Math.random() * 30 - 15); // Mock -15% to +15%
+        
+        return new AIChatAnalyticsDto(
+                totalQuestions,
+                uniqueUsers.size(),
+                avgResponseTime,
+                totalCost,
+                percentChange,
+                dailyChats,
+                topQuestions,
+                unansweredList
+        );
     }
 }
