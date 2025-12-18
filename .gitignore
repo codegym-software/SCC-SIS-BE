@@ -47,3 +47,4 @@ README_CICD.md
 ### JaCoCo Coverage Reports ###
 target/site/jacoco/
 target/jacoco.exec
+
