@@ -108,9 +108,14 @@ public class ChatController {
         ChatSessionDTO sessionDTO = toDTO(session);
         List<ChatMessage> messages = chatService.getConversationHistory(session, 100);
         
+        // Convert messages to response DTOs
+        List<ChatMessageResponse> messageResponses = messages.stream()
+            .map(this::toMessageResponse)
+            .toList();
+        
         Map<String, Object> response = new HashMap<>();
         response.put("session", sessionDTO);
-        response.put("messages", messages);
+        response.put("messages", messageResponses);
         
         return ResponseEntity.ok(response);
     }
@@ -416,6 +421,18 @@ public class ChatController {
         response.setSources(null); // TODO: implement sources from RAG context
         response.setCompletionMs(message.getCompletionMs());
         response.setTimestamp(message.getCreatedAt());
+        return response;
+    }
+    
+    private ChatMessageResponse toMessageResponse(ChatMessage message) {
+        ChatMessageResponse response = new ChatMessageResponse();
+        response.setMessageId(message.getMessageId());
+        response.setSessionId(message.getSession().getSessionId());
+        response.setRole(message.getRole().name()); // Convert enum to string
+        response.setMessage(message.getContent()); // Map content -> message
+        response.setSources(message.getSources()); // Include RAG sources
+        response.setCompletionMs(message.getCompletionMs());
+        response.setTimestamp(message.getCreatedAt()); // Map createdAt -> timestamp
         return response;
     }
     
