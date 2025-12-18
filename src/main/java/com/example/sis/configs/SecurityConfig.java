@@ -16,9 +16,17 @@ import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -183,6 +191,24 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PATCH, "/api/notifications/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/notifications/**").authenticated()
 
+                                                // Chat (AI Chatbot with RESTful API)
+                                                .requestMatchers(HttpMethod.POST, "/api/chat/sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/chat/sessions").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/chat/sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/chat/sessions/*/title").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/chat/sessions/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/chat/sessions/*/messages").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/chat/sessions/*/messages/stream").authenticated()
+
+                                                // Admin Knowledge Base (ADMIN only)
+                                                .requestMatchers(HttpMethod.POST, "/api/admin/knowledge/**").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/knowledge/**").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/api/admin/knowledge/**").authenticated()
+                                                .requestMatchers(HttpMethod.DELETE, "/api/admin/knowledge/**").authenticated()
+
+                                                // Admin Chat Analytics (ADMIN only)
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/chat-analytics/**").authenticated()
+
                                                 // Lessons & Learning Progress (Bài học & Tiến trình học tập)
                                                 .requestMatchers(HttpMethod.GET, "/api/lessons/module/*/progress").authenticated() // Get module progress
                                                 .requestMatchers(HttpMethod.GET, "/api/lessons/module/*").authenticated() // Get lessons by module
@@ -210,12 +236,59 @@ public class SecurityConfig {
                                                 .requestMatchers("/ws/**").permitAll()
 
                                                 .anyRequest().authenticated())
-                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
+                                .oauth2ResourceServer(oauth2 -> oauth2
+                                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))); // Custom converter to extract Keycloak roles
 
                 // Đăng ký filter sau BearerTokenAuthenticationFilter
                 http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
 
                 return http.build();
+        }
+
+        /**
+         * Custom JWT Authentication Converter to extract roles from Keycloak token.
+         * Keycloak stores roles in: realm_access.roles (realm roles) and resource_access.{client}.roles (client roles)
+         * This converter adds "ROLE_" prefix to all extracted roles for Spring Security.
+         */
+        @Bean
+        public JwtAuthenticationConverter jwtAuthenticationConverter() {
+                JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+                
+                // Custom authorities converter to extract Keycloak roles
+                converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+                        Collection<GrantedAuthority> authorities = new ArrayList<>();
+                        
+                        // Extract realm roles from realm_access.roles
+                        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+                        if (realmAccess != null && realmAccess.containsKey("roles")) {
+                                @SuppressWarnings("unchecked")
+                                List<String> realmRoles = (List<String>) realmAccess.get("roles");
+                                for (String role : realmRoles) {
+                                        // Add ROLE_ prefix for Spring Security
+                                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                                }
+                        }
+                        
+                        // Extract client roles from resource_access.{client}.roles
+                        Map<String, Object> resourceAccess = jwt.getClaimAsMap("resource_access");
+                        if (resourceAccess != null) {
+                                for (Map.Entry<String, Object> entry : resourceAccess.entrySet()) {
+                                        @SuppressWarnings("unchecked")
+                                        Map<String, Object> clientAccess = (Map<String, Object>) entry.getValue();
+                                        if (clientAccess != null && clientAccess.containsKey("roles")) {
+                                                @SuppressWarnings("unchecked")
+                                                List<String> clientRoles = (List<String>) clientAccess.get("roles");
+                                                for (String role : clientRoles) {
+                                                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                                                }
+                                        }
+                                }
+                        }
+                        
+                        return authorities;
+                });
+                
+                return converter;
         }
 
         @Bean

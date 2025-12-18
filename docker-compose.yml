@@ -33,18 +33,36 @@ services:
     networks:
       - scc-sis-network
 
+  # Qdrant Vector Database (for AI Chatbot)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: sis-qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+    networks:
+      - scc-sis-network
+    restart: unless-stopped
+
   # Spring Boot Application (new - from Docker Hub)
   backend:
     image: huy210205/scc-sis-be:huy2.3
     container_name: scc-sis-be
     depends_on:
       - mysql
+      - qdrant
     environment:
-      SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SERVER_PORT: 7000
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       TZ: "Asia/Ho_Chi_Minh"
     ports:
       - "7000:7000"
@@ -62,6 +80,7 @@ volumes:
   mysql_data:
     name: ${VOLUME_NAME}
     external: true
+  qdrant_data:
 
 networks:
   scc-sis-network:
