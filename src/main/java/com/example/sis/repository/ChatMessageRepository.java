@@ -54,4 +54,50 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Intege
                    "ORDER BY count DESC " +
                    "LIMIT :limit", nativeQuery = true)
     List<Object[]> findPopularQuestionsAfter(@Param("startDate") LocalDateTime startDate, @Param("limit") int limit);
+    
+    /**
+     * Count messages between dates
+     */
+    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.createdAt >= :startDate AND m.createdAt < :endDate")
+    Long countMessagesBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    /**
+     * Average completion time between dates
+     */
+    @Query("SELECT CAST(AVG(m.completionMs) AS int) FROM ChatMessage m WHERE m.createdAt >= :startDate AND m.createdAt < :endDate AND m.completionMs IS NOT NULL AND m.role = 'assistant'")
+    Integer avgCompletionMsBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    /**
+     * Count messages by completion time ranges
+     */
+    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.completionMs < :maxMs AND m.completionMs IS NOT NULL")
+    Long countByCompletionMsLessThan(@Param("maxMs") int maxMs);
+    
+    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.completionMs >= :minMs AND m.completionMs < :maxMs AND m.completionMs IS NOT NULL")
+    Long countByCompletionMsBetween(@Param("minMs") int minMs, @Param("maxMs") int maxMs);
+    
+    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.completionMs >= :minMs AND m.completionMs IS NOT NULL")
+    Long countByCompletionMsGreaterThan(@Param("minMs") int minMs);
+    
+    /**
+     * Find slow response questions in a specific time range
+     */
+    @Query(value = "SELECT MIN(m.message_id) as message_id, m.content, MAX(m.completion_ms) as completion_ms, COUNT(*) as asked_count, MAX(m.created_at) as last_asked " +
+                   "FROM chat_messages m " +
+                   "WHERE m.role = 'user' AND m.completion_ms >= :minCompletionMs AND m.completion_ms < :maxCompletionMs " +
+                   "GROUP BY m.content " +
+                   "ORDER BY MAX(m.completion_ms) DESC " +
+                   "LIMIT :limit", nativeQuery = true)
+    List<Object[]> findSlowResponseQuestionsInRange(@Param("minCompletionMs") int minCompletionMs, @Param("maxCompletionMs") int maxCompletionMs, @Param("limit") int limit);
+    
+    /**
+     * Find slow response questions (completion time >= threshold)
+     */
+    @Query(value = "SELECT MIN(m.message_id) as message_id, m.content, MAX(m.completion_ms) as completion_ms, COUNT(*) as asked_count, MAX(m.created_at) as last_asked " +
+                   "FROM chat_messages m " +
+                   "WHERE m.role = 'user' AND m.completion_ms >= :minCompletionMs " +
+                   "GROUP BY m.content " +
+                   "ORDER BY MAX(m.completion_ms) DESC " +
+                   "LIMIT :limit", nativeQuery = true)
+    List<Object[]> findSlowResponseQuestions(@Param("minCompletionMs") int minCompletionMs, @Param("limit") int limit);
 }

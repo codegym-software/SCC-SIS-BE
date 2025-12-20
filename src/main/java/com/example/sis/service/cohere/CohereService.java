@@ -8,9 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service for Cohere AI API integration
@@ -33,7 +40,17 @@ public class CohereService {
     private WebClient getWebClient() {
         log.info("🔑 Using Cohere API key: {}...", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) : "NULL");
         log.info("🌐 Using Cohere base URL: {}", baseUrl);
+        
+        // Configure HttpClient with timeouts
+        HttpClient httpClient = HttpClient.create()
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 60000) // 60s connection timeout
+            .doOnConnected(conn -> conn
+                .addHandlerLast(new ReadTimeoutHandler(120, TimeUnit.SECONDS)) // 120s read timeout
+                .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS))) // 60s write timeout
+            .responseTimeout(Duration.ofSeconds(120)); // 120s response timeout
+        
         return webClientBuilder
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
             .baseUrl(baseUrl)
             .defaultHeader("Authorization", "Bearer " + apiKey)
             .defaultHeader("Content-Type", "application/json")
@@ -123,7 +140,7 @@ public class CohereService {
             "model", "command-r-plus-08-2024",
             "messages", List.of(message),
             "temperature", 0.7,
-            "max_tokens", 2000
+            "max_tokens", 4000  // Increased to allow longer responses
         );
         
         return getWebClient()

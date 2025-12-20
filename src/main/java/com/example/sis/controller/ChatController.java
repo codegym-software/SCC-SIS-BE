@@ -47,7 +47,7 @@ public class ChatController {
      * POST /api/chat/sessions
      */
     @PostMapping("/sessions")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public ResponseEntity<ChatSessionDTO> createSession(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody Map<String, String> request) {
@@ -69,7 +69,7 @@ public class ChatController {
      * ✅ Users can only see THEIR OWN sessions
      */
     @GetMapping("/sessions")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public ResponseEntity<List<ChatSessionDTO>> getSessions(@AuthenticationPrincipal Jwt jwt) {
         Integer userId = securityContext.getCurrentUserId();
         
@@ -90,7 +90,7 @@ public class ChatController {
      * ✅ Verify user owns this session
      */
     @GetMapping("/sessions/{sessionId}")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public ResponseEntity<Map<String, Object>> getSessionDetails(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Integer sessionId) {
@@ -125,7 +125,7 @@ public class ChatController {
      * PUT /api/chat/sessions/{sessionId}/title
      */
     @PutMapping("/sessions/{sessionId}/title")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public ResponseEntity<Void> updateSessionTitle(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable Integer sessionId,
@@ -160,7 +160,7 @@ public class ChatController {
      * ✅ Only owner or admin can delete
      */
     @DeleteMapping("/sessions/{sessionId}")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public ResponseEntity<Void> deleteSession(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Integer sessionId) {
@@ -190,7 +190,7 @@ public class ChatController {
      * ✅ All authenticated users can send messages
      */
     @PostMapping("/sessions/{sessionId}/messages")
-    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("@authz.hasAnyRole(authentication, 'STUDENT', 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER')")
     public Mono<ResponseEntity<ChatMessageResponse>> sendMessage(
         @AuthenticationPrincipal Jwt jwt,
         @PathVariable Integer sessionId,

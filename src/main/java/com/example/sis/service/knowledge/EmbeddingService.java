@@ -31,75 +31,99 @@ public class EmbeddingService {
     private static final int MAX_RESULTS = 5;
     
     /**
-     * Generate embeddings for a document and store in Qdrant (async)
+     * Generate embeddings for a document and store in Qdrant (synchronous)
      * Chunks the document and creates embeddings for each chunk
      */
-    @Async
     @Transactional
     public void generateEmbeddingsForDocument(KnowledgeDocument document) {
-        log.info("Generating embeddings for document: {}", document.getDocId());
-        
-        List<String> chunks = chunkText(document.getContent());
-        log.info("Split document {} into {} chunks", document.getDocId(), chunks.size());
-        
-        List<QdrantService.QdrantPoint> qdrantPoints = new ArrayList<>();
-        List<KnowledgeEmbedding> embeddingEntities = new ArrayList<>();
-        
-        for (int i = 0; i < chunks.size(); i++) {
-            try {
-                String chunkText = chunks.get(i);
-                List<Float> embedding = cohereService.createDocumentEmbedding(chunkText).block();
-                
-                if (embedding != null) {
-                    // Generate Qdrant point ID (UUID for compatibility)
-                    String pointId = UUID.randomUUID().toString();
-                    
-                    // Prepare Qdrant payload
-                    Map<String, Object> payload = new HashMap<>();
-                    payload.put("doc_id", document.getDocId());
-                    payload.put("doc_title", document.getTitle());
-                    payload.put("chunk_index", i);
-                    payload.put("chunk_text", chunkText);
-                    payload.put("doc_type", document.getDocType());
-                    
-                    // Add academic context if exists
-                    if (document.getRelatedEntityType() != null) {
-                        payload.put("entity_type", document.getRelatedEntityType());
-                        payload.put("entity_id", document.getRelatedEntityId());
-                    }
-                    
-                    // Create Qdrant point
-                    QdrantService.QdrantPoint point = new QdrantService.QdrantPoint(pointId, embedding, payload);
-                    qdrantPoints.add(point);
-                    
-                    // Create MySQL metadata
-                    KnowledgeEmbedding entity = new KnowledgeEmbedding();
-                    entity.setDocument(document);
-                    entity.setChunkIndex(i);
-                    entity.setChunkText(chunkText);
-                    entity.setQdrantPointId(pointId);
-                    embeddingEntities.add(entity);
-                    
-                    log.debug("Generated embedding for chunk {}/{}", i + 1, chunks.size());
-                }
-            } catch (Exception e) {
-                log.error("Failed to generate embedding for chunk {}", i, e);
+        try {
+            log.info("🔄 Generating embeddings for document: {} (docId: {})", document.getTitle(), document.getDocId());
+            
+            List<String> chunks = chunkText(document.getContent());
+            log.info("📄 Split document {} into {} chunks", document.getDocId(), chunks.size());
+            
+            if (chunks.isEmpty()) {
+                log.warn("⚠️ No chunks generated for document {}", document.getDocId());
+                return;
             }
+            
+            List<QdrantService.QdrantPoint> qdrantPoints = new ArrayList<>();
+            List<KnowledgeEmbedding> embeddingEntities = new ArrayList<>();
+            
+            for (int i = 0; i < chunks.size(); i++) {
+                try {
+                    String chunkText = chunks.get(i);
+                    log.debug("🔍 Processing chunk {}/{}: {} chars", i + 1, chunks.size(), chunkText.length());
+                    
+                    List<Float> embedding = cohereService.createDocumentEmbedding(chunkText).block();
+                    
+                    if (embedding != null && !embedding.isEmpty()) {
+                        // Generate Qdrant point ID (UUID for compatibility)
+                        String pointId = UUID.randomUUID().toString();
+                        
+                        // Prepare Qdrant payload
+                        Map<String, Object> payload = new HashMap<>();
+                        payload.put("doc_id", document.getDocId());
+                        payload.put("doc_title", document.getTitle());
+                        payload.put("chunk_index", i);
+                        payload.put("chunk_text", chunkText);
+                        payload.put("doc_type", document.getDocType());
+                        
+                        // Add academic context if exists
+                        if (document.getRelatedEntityType() != null) {
+                            payload.put("entity_type", document.getRelatedEntityType());
+                            payload.put("entity_id", document.getRelatedEntityId());
+                        }
+                        
+                        // Create Qdrant point
+                        QdrantService.QdrantPoint point = new QdrantService.QdrantPoint(pointId, embedding, payload);
+                        qdrantPoints.add(point);
+                        
+                        // Create MySQL metadata
+                        KnowledgeEmbedding entity = new KnowledgeEmbedding();
+                        entity.setDocument(document);
+                        entity.setChunkIndex(i);
+                        entity.setChunkText(chunkText);
+                        entity.setQdrantPointId(pointId);
+                        embeddingEntities.add(entity);
+                        
+                        log.debug("✅ Generated embedding for chunk {}/{} (vector size: {})", 
+                            i + 1, chunks.size(), embedding.size());
+                    } else {
+                        log.warn("⚠️ Null or empty embedding returned for chunk {} of document {}", i, document.getDocId());
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Failed to generate embedding for chunk {} of document {}: {}", 
+                        i, document.getDocId(), e.getMessage(), e);
+                }
+            }
+            
+            // Batch upload to Qdrant
+            if (!qdrantPoints.isEmpty()) {
+                log.info("📤 Uploading {} points to Qdrant...", qdrantPoints.size());
+                qdrantService.batchUpsertPoints(qdrantPoints);
+                log.info("✅ Uploaded {} points to Qdrant successfully", qdrantPoints.size());
+            } else {
+                log.warn("⚠️ No Qdrant points to upload for document {}", document.getDocId());
+            }
+            
+            // Save metadata to MySQL
+            if (!embeddingEntities.isEmpty()) {
+                log.info("💾 Saving {} embedding records to MySQL...", embeddingEntities.size());
+                embeddingRepository.saveAll(embeddingEntities);
+                log.info("✅ Saved {} embedding records to MySQL successfully", embeddingEntities.size());
+            } else {
+                log.warn("⚠️ No embedding entities to save for document {}", document.getDocId());
+            }
+            
+            log.info("🎉 Completed embedding generation for document: {} ({} chunks processed)", 
+                document.getDocId(), chunks.size());
+                
+        } catch (Exception e) {
+            log.error("❌ CRITICAL: Failed to generate embeddings for document {}: {}", 
+                document.getDocId(), e.getMessage(), e);
+            // Don't rethrow - this is async, we just log the error
         }
-        
-        // Batch upload to Qdrant
-        if (!qdrantPoints.isEmpty()) {
-            qdrantService.batchUpsertPoints(qdrantPoints);
-            log.info("Uploaded {} points to Qdrant", qdrantPoints.size());
-        }
-        
-        // Save metadata to MySQL
-        if (!embeddingEntities.isEmpty()) {
-            embeddingRepository.saveAll(embeddingEntities);
-            log.info("Saved {} embedding records to MySQL", embeddingEntities.size());
-        }
-        
-        log.info("Completed embedding generation for document: {}", document.getDocId());
     }
     
     /**

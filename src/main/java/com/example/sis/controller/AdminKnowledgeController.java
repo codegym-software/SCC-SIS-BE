@@ -4,6 +4,7 @@ import com.example.sis.dto.knowledge.KnowledgeDocumentDTO;
 import com.example.sis.dto.knowledge.KnowledgeDocumentRequest;
 import com.example.sis.dto.knowledge.RAGTestResultDTO;
 import com.example.sis.entity.MessageSource;
+import com.example.sis.service.knowledge.DocumentTextExtractorService;
 import com.example.sis.service.knowledge.EmbeddingService;
 import com.example.sis.service.knowledge.KnowledgeService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class AdminKnowledgeController {
     
     private final KnowledgeService knowledgeService;
     private final EmbeddingService embeddingService;
+    private final DocumentTextExtractorService textExtractorService;
     
     /**
      * Upload knowledge document file
@@ -34,9 +36,11 @@ public class AdminKnowledgeController {
      * 
      * Postman Setup:
      * - Body: form-data
-     * - Key: file (Type: File) | Value: Select your .txt or .md file
+     * - Key: file (Type: File) | Value: Select your PDF, DOC, DOCX, TXT or MD file
      * - Key: title (Type: Text) | Value: Document Title (optional)
      * - Key: docType (Type: Text) | Value: GUIDE (optional, default: GUIDE)
+     * 
+     * Supports: PDF, DOC, DOCX, TXT, MD (text-only files, no images)
      */
     @PostMapping("/documents")
     public KnowledgeDocumentDTO createDocument(
@@ -61,8 +65,12 @@ public class AdminKnowledgeController {
             userId, email, file.getOriginalFilename(), file.getSize());
         
         try {
-            // Read file content
-            String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+            // Extract text from file (PDF, DOC, DOCX, TXT, MD)
+            String content = textExtractorService.extractText(file);
+            
+            if (content == null || content.trim().isEmpty()) {
+                throw new IOException("No text content found in file. File may contain only images.");
+            }
             
             // Use filename as title if not provided
             String documentTitle = (title != null && !title.isEmpty()) 

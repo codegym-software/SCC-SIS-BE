@@ -1,7 +1,6 @@
 package com.example.sis.controller;
 
-import com.example.sis.dto.analytics.ChatAnalyticsDTO;
-import com.example.sis.dto.analytics.PopularQuestionDTO;
+import com.example.sis.dto.analytics.*;
 import com.example.sis.service.analytics.ChatAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,26 +30,23 @@ public class ChatAnalyticsController {
      * 
      * Example response:
      * {
-     *   "totalSessions": 150,
-     *   "totalMessages": 3000,
-     *   "totalUserMessages": 1500,
-     *   "totalAssistantMessages": 1500,
-     *   "avgCompletionMs": 1250,
-     *   "totalTokensUsed": 45000,
-     *   "totalCostUsd": 0.15,
-     *   "avgCostPerMessage": 0.00005
+     *   "totalQuestions": 150,
+     *   "totalUsers": 45,
+     *   "avgResponseTime": 1250,
+     *   "questionsTrend": 12.5,
+     *   "usersTrend": -5.2,
+     *   "responseTimeTrend": 3.1
      * }
      */
     @GetMapping("/overview")
-    public ResponseEntity<ChatAnalyticsDTO> getOverallAnalytics(
+    public ResponseEntity<OverviewStatsDTO> getOverallAnalytics(
         @RequestParam(required = false, defaultValue = "30") int days
     ) {
         log.info("📊 Admin requests analytics for last {} days", days);
         
-        LocalDateTime startDate = LocalDateTime.now().minusDays(days);
-        ChatAnalyticsDTO analytics = analyticsService.getOverallAnalytics(startDate);
+        OverviewStatsDTO overview = analyticsService.getOverviewStats(days);
         
-        return ResponseEntity.ok(analytics);
+        return ResponseEntity.ok(overview);
     }
     
     /**
@@ -82,5 +78,61 @@ public class ChatAnalyticsController {
         List<PopularQuestionDTO> questions = analyticsService.getPopularQuestions(startDate, limit);
         
         return ResponseEntity.ok(questions);
+    }
+    
+    /**
+     * Get unanswered questions (low similarity)
+     * GET /api/admin/chat-analytics/unanswered-questions?limit=5
+     */
+    @GetMapping("/unanswered-questions")
+    public ResponseEntity<List<UnansweredQuestionDTO>> getUnansweredQuestions(
+        @RequestParam(required = false, defaultValue = "5") int limit
+    ) {
+        log.info("❓ Admin requests unanswered questions (limit: {})", limit);
+        
+        List<UnansweredQuestionDTO> questions = analyticsService.getUnansweredQuestions(limit);
+        
+        return ResponseEntity.ok(questions);
+    }
+    
+    /**
+     * Get usage trends over time
+     * GET /api/admin/chat-analytics/usage-trends?days=7
+     */
+    @GetMapping("/usage-trends")
+    public ResponseEntity<List<UsageTrendDTO>> getUsageTrends(
+        @RequestParam(required = false, defaultValue = "7") int days
+    ) {
+        log.info("📈 Admin requests usage trends for last {} days", days);
+        
+        List<UsageTrendDTO> trends = analyticsService.getUsageTrends(days);
+        
+        return ResponseEntity.ok(trends);
+    }
+    
+    /**
+     * Get response time distribution
+     * GET /api/admin/chat-analytics/response-time-distribution
+     */
+    @GetMapping("/response-time-distribution")
+    public ResponseEntity<List<ResponseTimeRangeDTO>> getResponseTimeDistribution() {
+        log.info("⏱️ Admin requests response time distribution");
+        
+        List<ResponseTimeRangeDTO> distribution = analyticsService.getResponseTimeDistribution();
+        
+        return ResponseEntity.ok(distribution);
+    }
+    
+    /**
+     * Get user satisfaction ratings
+     * GET /api/admin/chat-analytics/user-satisfaction
+     */
+    @GetMapping("/user-satisfaction")
+    public ResponseEntity<UserSatisfactionDTO> getUserSatisfaction() {
+        log.info("⭐ Admin requests user satisfaction");
+        
+        UserSatisfactionDTO satisfaction = analyticsService.getUserSatisfaction();
+        
+        return ResponseEntity.ok(satisfaction);
     }
 }
