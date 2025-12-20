@@ -1,5 +1,4 @@
 services:
-  # MySQL Database (existing)
   mysql:
     image: mysql:8.0
     container_name: sis-mysql
@@ -16,7 +15,6 @@ services:
     networks:
       - scc-sis-network
 
-  # phpMyAdmin (existing)
   phpmyadmin:
     image: phpmyadmin:5
     container_name: sis-phpmyadmin
@@ -33,15 +31,12 @@ services:
     networks:
       - scc-sis-network
 
-<<<<<<< HEAD
-=======
-  # Qdrant Vector Database (for AI Chatbot)
   qdrant:
     image: qdrant/qdrant:latest
     container_name: sis-qdrant
     ports:
-      - "6333:6333"  # REST API
-      - "6334:6334"  # gRPC API
+      - "6333:6333"
+      - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
@@ -50,30 +45,21 @@ services:
       - scc-sis-network
     restart: unless-stopped
 
->>>>>>> dev20
-  # Spring Boot Application (new - from Docker Hub)
   backend:
     image: huy210205/scc-sis-be:huy2.3
     container_name: scc-sis-be
     depends_on:
       - mysql
-<<<<<<< HEAD
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-=======
       - qdrant
     environment:
->>>>>>> dev20
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SERVER_PORT: 7000
-<<<<<<< HEAD
-=======
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
       OPENAI_API_KEY: ${OPENAI_API_KEY}
->>>>>>> dev20
       TZ: "Asia/Ho_Chi_Minh"
     ports:
       - "7000:7000"
@@ -87,8 +73,6 @@ services:
       retries: 3
       start_period: 40s
 
-<<<<<<< HEAD
-  # Frontend Application (React + Vite)
   frontend:
     image: huy210205/scc-sis-fe:huy2.5
     container_name: scc-sis-fe
@@ -104,21 +88,12 @@ services:
       - scc-sis-network
     restart: unless-stopped
 
-=======
->>>>>>> dev20
 volumes:
   mysql_data:
     name: ${VOLUME_NAME}
     external: true
-<<<<<<< HEAD
-
-networks:
-  scc-sis-network:
-    name: scc-sis-network
-=======
   qdrant_data:
 
 networks:
   scc-sis-network:
->>>>>>> dev20
     driver: bridge

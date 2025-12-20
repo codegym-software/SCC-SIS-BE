@@ -1,5 +1,4 @@
 package com.example.sis.configs;
-
 import com.example.sis.configs.DefaultRoleAutoAssignFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,23 +15,16 @@ import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-<<<<<<< HEAD
-
-import java.util.Arrays;
-import java.util.List;
-=======
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
->>>>>>> dev20
 import java.util.stream.Collectors;
 
 @Configuration
@@ -197,8 +189,6 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.PATCH, "/api/notifications/**").authenticated()
                                                 .requestMatchers(HttpMethod.DELETE, "/api/notifications/**").authenticated()
 
-<<<<<<< HEAD
-=======
                                                 // Chat (AI Chatbot with RESTful API)
                                                 .requestMatchers(HttpMethod.POST, "/api/chat/sessions").authenticated()
                                                 .requestMatchers(HttpMethod.GET, "/api/chat/sessions").authenticated()
@@ -217,7 +207,6 @@ public class SecurityConfig {
                                                 // Admin Chat Analytics (ADMIN only)
                                                 .requestMatchers(HttpMethod.GET, "/api/admin/chat-analytics/**").authenticated()
 
->>>>>>> dev20
                                                 // Lessons & Learning Progress (Bài học & Tiến trình học tập)
                                                 .requestMatchers(HttpMethod.GET, "/api/lessons/module/*/progress").authenticated() // Get module progress
                                                 .requestMatchers(HttpMethod.GET, "/api/lessons/module/*").authenticated() // Get lessons by module
@@ -245,12 +234,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/ws/**").permitAll()
 
                                                 .anyRequest().authenticated())
-<<<<<<< HEAD
-                                .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // dùng JWT Bearer từ Keycloak
-=======
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))); // Custom converter to extract Keycloak roles
->>>>>>> dev20
 
                 // Đăng ký filter sau BearerTokenAuthenticationFilter
                 http.addFilterAfter(defaultRoleAutoAssignFilter, BearerTokenAuthenticationFilter.class);
@@ -258,8 +243,6 @@ public class SecurityConfig {
                 return http.build();
         }
 
-<<<<<<< HEAD
-=======
         /**
          * Custom JWT Authentication Converter to extract roles from Keycloak token.
          * Keycloak stores roles in: realm_access.roles (realm roles) and resource_access.{client}.roles (client roles)
@@ -306,7 +289,6 @@ public class SecurityConfig {
                 return converter;
         }
 
->>>>>>> dev20
         @Bean
         public CorsConfigurationSource corsConfigurationSource(
                         @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOriginsProp) {
